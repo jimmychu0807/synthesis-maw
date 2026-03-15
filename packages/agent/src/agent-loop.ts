@@ -1,3 +1,10 @@
+/**
+ * Main agent orchestrator. Compiles intent into a delegation, then runs a monitoring
+ * loop: check drift, reason via Venice, quote and execute swaps on Uniswap, log
+ * results. Exposes singleton state for the dashboard server.
+ *
+ * @module @veil/agent/agent-loop
+ */
 import type { Address, Hex } from "viem";
 import { createWalletClient, createPublicClient, http, parseUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -741,7 +748,7 @@ async function executeSwap(
       `Status: ${receipt.status} | Gas: ${receipt.gasUsed.toString()}`,
     );
 
-    // ERC-8004: give on-chain feedback rating the Uniswap service (non-blocking)
+    // ERC-8004: give on-chain feedback for the swap (non-blocking)
     const feedbackAgentId = state.agentId ?? 1n;
     giveFeedback(feedbackAgentId, 5, "swap-execution", "defi", "base-sepolia")
       .then((fbHash) => {
