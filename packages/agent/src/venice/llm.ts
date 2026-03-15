@@ -1,6 +1,6 @@
 /**
  * Venice AI LLM instances via LangChain. Three tiers: fast (qwen3-4b),
- * research (gemini-3-flash with web search), reasoning (gemini-3-1-pro).
+ * research (gemini-3-flash-preview with web search), reasoning (gemini-3-1-pro-preview).
  * Custom fetch wrapper captures billing headers for budget tracking.
  *
  * @module @veil/agent/venice/llm
