@@ -16,3 +16,9 @@ export {
   type AgentStateResponse,
   type DeployResponse,
 } from "./schemas.js";
+
+export {
+  AGENT_ADDRESS,
+  DEFAULT_AGENT_PORT,
+  API_PATHS,
+} from "./constants.js";
