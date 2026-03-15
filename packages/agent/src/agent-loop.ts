@@ -5,6 +5,7 @@
  *
  * @module @veil/agent/agent-loop
  */
+import type { SwapRecord } from "@veil/common";
 import type { Address, Hex } from "viem";
 import { createWalletClient, createPublicClient, http, parseUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -59,15 +60,6 @@ export interface AgentState {
   transactions: SwapRecord[];
   audit: AuditReport | null;
   agentId: bigint | null;
-}
-
-export interface SwapRecord {
-  txHash: string;
-  sellToken: string;
-  buyToken: string;
-  sellAmount: string;
-  status: string;
-  timestamp: string;
 }
 
 // Singleton state for dashboard access
