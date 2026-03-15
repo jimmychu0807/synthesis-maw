@@ -6,7 +6,7 @@ import { Configure } from "@/components/configure";
 import { Audit } from "@/components/audit";
 import { Monitor } from "@/components/monitor";
 import { Footer } from "@/components/footer";
-import type { DeployResponse } from "@/lib/types";
+import type { DeployResponse } from "@veil/common";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("configure");

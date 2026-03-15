@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { fetchAgentState } from "@/lib/api";
-import type { AgentStateResponse } from "@/lib/types";
+import type { AgentStateResponse } from "@veil/common";
 
 export function useAgentState(enabled: boolean, intervalMs = 5000) {
   const [data, setData] = useState<AgentStateResponse | null>(null);

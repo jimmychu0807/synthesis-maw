@@ -1,31 +1,12 @@
 "use client";
 
 import { SponsorBadge } from "./sponsor-badge";
-import type { DeployResponse } from "@/lib/types";
+import type { DeployResponse } from "@veil/common";
+import { getTokenBg, getTokenLabelColor } from "@veil/common";
 
 interface AuditProps {
   data: DeployResponse;
   onViewMonitor: () => void;
-}
-
-const TOKEN_COLORS: Record<string, string> = {
-  ETH: "bg-emerald-500",
-  WETH: "bg-emerald-500",
-  USDC: "bg-indigo-500",
-};
-
-const TOKEN_LABEL_COLORS: Record<string, string> = {
-  ETH: "text-emerald-400",
-  WETH: "text-emerald-400",
-  USDC: "text-indigo-400",
-};
-
-function getTokenColor(token: string): string {
-  return TOKEN_COLORS[token.toUpperCase()] ?? "bg-amber-500";
-}
-
-function getTokenLabelColor(token: string): string {
-  return TOKEN_LABEL_COLORS[token.toUpperCase()] ?? "text-amber-400";
 }
 
 function CheckIcon() {
@@ -98,7 +79,7 @@ export function Audit({ data, onViewMonitor }: AuditProps) {
               {allocationEntries.map(([token, pct]) => (
                 <div
                   key={token}
-                  className={`${getTokenColor(token)} flex items-center justify-center text-xs font-semibold text-white transition-all`}
+                  className={`${getTokenBg(token)} flex items-center justify-center text-xs font-semibold text-white transition-all`}
                   style={{ width: `${(pct * 100).toFixed(0)}%` }}
                   title={`${token} ${(pct * 100).toFixed(0)}%`}
                 >
@@ -111,7 +92,7 @@ export function Audit({ data, onViewMonitor }: AuditProps) {
               {allocationEntries.map(([token, pct]) => (
                 <div key={token} className="flex items-center gap-1.5 text-xs">
                   <span
-                    className={`inline-block h-2.5 w-2.5 rounded-sm ${getTokenColor(token)}`}
+                    className={`inline-block h-2.5 w-2.5 rounded-sm ${getTokenBg(token)}`}
                   />
                   <span className={getTokenLabelColor(token)}>{token}</span>
                   <span className="font-mono text-text-secondary">{(pct * 100).toFixed(0)}%</span>

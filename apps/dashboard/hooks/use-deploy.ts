@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { deployAgent } from "@/lib/api";
-import type { DeployResponse } from "@/lib/types";
+import type { DeployResponse } from "@veil/common";
 
 export function useDeploy() {
   const [data, setData] = useState<DeployResponse | null>(null);
