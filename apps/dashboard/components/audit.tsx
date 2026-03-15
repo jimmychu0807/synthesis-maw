@@ -1,6 +1,7 @@
 "use client";
 
-import type { DeployResponse } from "../lib/types";
+import { SponsorBadge } from "./sponsor-badge";
+import type { DeployResponse } from "@/lib/types";
 
 interface AuditProps {
   data: DeployResponse;
@@ -82,7 +83,7 @@ export function Audit({ data, onViewMonitor }: AuditProps) {
   const allocationEntries = Object.entries(parsed.targetAllocation);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
       {/* Two-column grid on desktop, stacked on mobile */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* LEFT COLUMN — Parsed Intent */}
@@ -153,10 +154,9 @@ export function Audit({ data, onViewMonitor }: AuditProps) {
             </div>
           </div>
 
-          {/* Sponsor badge */}
-          <p className="mt-6 text-xs text-text-tertiary">
-            Powered by Venice
-          </p>
+          <div className="mt-6 border-t border-border-subtle pt-3">
+            <SponsorBadge text="Powered by Venice" />
+          </div>
         </div>
 
         {/* RIGHT COLUMN — Delegation Report */}
@@ -246,10 +246,9 @@ export function Audit({ data, onViewMonitor }: AuditProps) {
             </p>
           )}
 
-          {/* Sponsor badge */}
-          <p className="mt-6 text-xs text-text-tertiary">
-            Enforced by MetaMask Delegation
-          </p>
+          <div className="mt-6 border-t border-border-subtle pt-3">
+            <SponsorBadge text="Enforced by MetaMask Delegation" />
+          </div>
         </div>
       </div>
 
@@ -267,7 +266,7 @@ export function Audit({ data, onViewMonitor }: AuditProps) {
         <button
           type="button"
           onClick={onViewMonitor}
-          className="rounded-lg border border-accent-positive bg-accent-positive/10 px-5 py-2 text-sm font-medium text-accent-positive transition-colors hover:bg-accent-positive/20"
+          className="cursor-pointer rounded-lg border border-accent-positive bg-accent-positive/10 px-5 py-2 text-sm font-medium text-accent-positive transition-colors hover:bg-accent-positive/20 active:bg-accent-positive/25 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-positive"
         >
           View Monitor
         </button>

@@ -275,7 +275,7 @@ export function Monitor({ onNavigateConfigure }: MonitorProps) {
         </p>
         <button
           onClick={onNavigateConfigure}
-          className="mt-2 cursor-pointer rounded-lg bg-accent-positive px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
+          className="mt-2 cursor-pointer rounded-lg bg-accent-positive px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-600 active:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-positive focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
         >
           Go to Configure
         </button>

@@ -10,7 +10,7 @@ export function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
       {onRetry && (
         <button
           onClick={onRetry}
-          className="shrink-0 rounded-md border border-accent-danger/30 px-3 py-1.5 text-xs font-medium text-accent-danger hover:bg-accent-danger/10 transition-colors cursor-pointer"
+          className="shrink-0 rounded-md border border-accent-danger/30 px-3 py-1.5 text-xs font-medium text-accent-danger transition-colors hover:bg-accent-danger/10 active:bg-accent-danger/15 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-danger"
         >
           Retry
         </button>

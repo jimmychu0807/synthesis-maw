@@ -63,14 +63,14 @@ export function Configure({ onSuccess }: ConfigureProps) {
             placeholder="60/40 ETH/USDC, $200/day, 7 days"
             rows={3}
             disabled={loading}
-            className="w-full resize-none rounded-lg border border-border bg-bg-primary px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-positive focus:outline-none disabled:opacity-50"
+            className="w-full resize-none rounded-lg border border-border bg-bg-primary px-4 py-3 font-mono text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-positive focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-positive disabled:opacity-50"
           />
 
           {/* Deploy button */}
           <button
             onClick={handleSubmit}
             disabled={isEmpty || loading}
-            className="mt-4 flex w-full items-center justify-center rounded-lg border border-accent-positive px-4 py-3 text-sm font-semibold uppercase tracking-widest text-accent-positive transition-colors hover:bg-accent-positive-dim focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            className="mt-4 flex w-full cursor-pointer items-center justify-center rounded-lg border border-accent-positive px-4 py-3 text-sm font-semibold uppercase tracking-widest text-accent-positive transition-colors hover:bg-accent-positive-dim active:bg-accent-positive/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-positive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
           >
             {loading ? (
               <>
@@ -113,7 +113,7 @@ export function Configure({ onSuccess }: ConfigureProps) {
               key={preset}
               onClick={() => setIntent(preset)}
               disabled={loading}
-              className="rounded-full border border-border px-3 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-text-secondary hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-full border border-border px-3 py-1.5 font-mono text-xs text-text-tertiary transition-colors hover:border-text-secondary hover:text-text-secondary focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-positive disabled:cursor-not-allowed disabled:opacity-40"
             >
               {preset}
             </button>

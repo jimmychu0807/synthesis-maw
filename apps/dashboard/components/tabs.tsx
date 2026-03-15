@@ -34,15 +34,7 @@ export function Tabs({ activeTab, onTabChange, hasDeployed }: TabsProps) {
             aria-selected={isActive}
             onClick={() => !isDisabled && onTabChange(tab.id)}
             disabled={isDisabled}
-            className={`
-              relative px-4 py-3 text-sm font-medium transition-colors
-              ${isActive
-                ? "text-text-primary"
-                : isDisabled
-                  ? "text-text-tertiary cursor-not-allowed"
-                  : "text-text-secondary hover:text-text-primary cursor-pointer"
-              }
-            `}
+            className={`relative px-4 py-3 text-sm font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-accent-positive focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary rounded-sm ${isActive ? "text-text-primary" : isDisabled ? "text-text-tertiary cursor-not-allowed" : "text-text-secondary hover:text-text-primary cursor-pointer"}`}
           >
             {tab.label}
             {isActive && (
