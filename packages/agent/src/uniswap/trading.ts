@@ -136,10 +136,15 @@ export async function getQuote(params: QuoteRequest): Promise<QuoteResponse> {
 export async function createSwap(
   quote: QuoteResponse,
   signature?: Hex,
+  options?: { disableSimulation?: boolean },
 ): Promise<SwapResponse> {
   const body: Record<string, unknown> = {
     quote: quote.quote,
-    simulateTransaction: true,
+    // Disable simulation when:
+    // 1. Permit data is present — nonces haven't been consumed yet
+    // 2. Delegation path — swap executes from smart account, not the swapper directly
+    simulateTransaction:
+      options?.disableSimulation ? false : !quote.permitData,
   };
 
   if (quote.permitData && signature) {

@@ -22,14 +22,14 @@ describe("Audit report generation (e2e)", () => {
     "generates a complete audit report from a real delegation",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         safeIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, delegation);
+      const report = generateAuditReport(safeIntent, result.delegation);
 
       // All sections should be populated
       expect(report.allows).toBeDefined();
@@ -64,14 +64,14 @@ describe("Audit report generation (e2e)", () => {
     "reports correct allows content for the intent",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         safeIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, delegation);
+      const report = generateAuditReport(safeIntent, result.delegation);
 
       // Check specific allows content
       expect(report.allows.some((a) => a.includes("$200/day"))).toBe(true);
@@ -90,14 +90,14 @@ describe("Audit report generation (e2e)", () => {
     "reports correct prevents content for the intent",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         safeIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, delegation);
+      const report = generateAuditReport(safeIntent, result.delegation);
 
       // $200/day * 7 days = $1,400 total
       expect(report.prevents.some((p) => p.includes("1,400"))).toBe(true);
@@ -113,14 +113,14 @@ describe("Audit report generation (e2e)", () => {
     "worst case calculation is correct",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         safeIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, delegation);
+      const report = generateAuditReport(safeIntent, result.delegation);
 
       // Total budget = $200 * 7 = $1,400
       // Slippage loss = $1,400 * 0.005 = $7.00
@@ -135,14 +135,14 @@ describe("Audit report generation (e2e)", () => {
     "intent match reports caveats, delegate/delegator, and signature",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         safeIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, delegation);
+      const report = generateAuditReport(safeIntent, result.delegation);
 
       // A real signed delegation should have all three
       expect(report.intentMatch).toContain("Caveats present: YES");
@@ -155,14 +155,14 @@ describe("Audit report generation (e2e)", () => {
     "safe intent produces no warnings",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         safeIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, delegation);
+      const report = generateAuditReport(safeIntent, result.delegation);
 
       expect(report.warnings).toHaveLength(0);
       expect(report.formatted).not.toContain("WARNINGS");
@@ -182,14 +182,14 @@ describe("Audit report generation (e2e)", () => {
         driftThreshold: 0.05,
       };
 
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         adversarialIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(adversarialIntent, delegation);
+      const report = generateAuditReport(adversarialIntent, result.delegation);
 
       expect(report.warnings.length).toBeGreaterThanOrEqual(3);
       expect(report.warnings.some((w) => w.includes("Daily budget"))).toBe(

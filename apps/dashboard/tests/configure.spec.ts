@@ -139,4 +139,33 @@ test.describe("Configure Screen", () => {
       page.getByText("Compiling intent via Venice AI..."),
     ).toBeVisible({ timeout: 2000 });
   });
+
+  test("Ctrl+Enter triggers deploy (Windows/Linux)", async ({ page }) => {
+    await page.route("**/api/deploy", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          parsed: {
+            targetAllocation: { ETH: 0.5, USDC: 0.5 },
+            dailyBudgetUsd: 100,
+            timeWindowDays: 30,
+            maxSlippage: 0.01,
+            driftThreshold: 0.1,
+            maxTradesPerDay: 5,
+          },
+          audit: { allows: [], prevents: [], worstCase: null, warnings: [] },
+        }),
+      });
+    });
+
+    const textarea = page.getByPlaceholder(/60\/40/);
+    await textarea.fill("50/50 split");
+    await textarea.press("Control+Enter");
+
+    await expect(
+      page.getByText("Compiling intent via Venice AI..."),
+    ).toBeVisible({ timeout: 2000 });
+  });
 });

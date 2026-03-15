@@ -1,22 +1,42 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const isCI = !!process.env.CI;
+const runIntegration = !!process.env.INTEGRATION;
+
 export default defineConfig({
-  testDir: "./tests",
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 1 : undefined,
   reporter: "html",
   use: {
     baseURL: "http://localhost:3100",
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // UI tests (mocked API) — always run
+    {
+      name: "ui",
+      testDir: "./tests",
+      testIgnore: ["**/integration/**"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Integration tests (real agent server) — opt-in via INTEGRATION=1
+    ...(runIntegration
+      ? [
+          {
+            name: "integration",
+            testDir: "./tests/integration",
+            use: { ...devices["Desktop Chrome"] },
+            // Integration tests are serial — deploy changes server state
+            fullyParallel: false,
+          },
+        ]
+      : []),
   ],
   webServer: {
     command: "pnpm dev --port 3100",
     url: "http://localhost:3100",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !isCI,
   },
 });

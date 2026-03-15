@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "pnpm --filter @veil/agent dev",
     "build": "turbo run build",
-    "test": "pnpm --filter @veil/agent test",
-    "test:unit": "pnpm --filter @veil/agent test",
+    "test": "turbo run test",
+    "test:unit": "turbo run test",
     "test:e2e": "pnpm --filter @veil/agent test:e2e",
+    "test:e2e:dashboard": "pnpm --filter @veil/dashboard test:e2e",
+    "test:integration": "pnpm --filter @veil/dashboard test:integration",
     "serve": "pnpm --filter @veil/agent serve",
     "codegen": "pnpm --filter @veil/agent codegen",
     "lint": "turbo run lint",

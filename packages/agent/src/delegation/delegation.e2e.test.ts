@@ -23,22 +23,25 @@ describe("Delegation creation + signing (e2e)", () => {
     "creates and signs a delegation from intent",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         testIntent,
         delegatorKey,
         agentAccount.address,
         11155111, // Sepolia
       );
 
-      expect(delegation).toBeDefined();
-      expect(delegation.signature).toBeDefined();
-      expect(typeof delegation.signature).toBe("string");
-      expect(delegation.signature).not.toBe("0x");
-      expect(delegation.signature!.length).toBeGreaterThan(10);
+      expect(result).toBeDefined();
+      expect(result.delegation).toBeDefined();
+      expect(result.delegation.signature).toBeDefined();
+      expect(typeof result.delegation.signature).toBe("string");
+      expect(result.delegation.signature).not.toBe("0x");
+      expect(result.delegation.signature!.length).toBeGreaterThan(10);
+      expect(result.delegatorSmartAccount).toBeDefined();
+      expect(result.delegatorSmartAccount.address).toBeDefined();
 
       console.log("Delegation created:", {
-        from: "delegate" in delegation ? delegation.delegate : "unknown",
-        signature: delegation.signature?.slice(0, 20) + "...",
+        delegatorSmartAccount: result.delegatorSmartAccount.address,
+        signature: result.delegation.signature?.slice(0, 20) + "...",
       });
     },
   );
@@ -47,14 +50,14 @@ describe("Delegation creation + signing (e2e)", () => {
     "generates audit report for delegation",
     { timeout: 30000 },
     async () => {
-      const delegation = await createDelegationFromIntent(
+      const result = await createDelegationFromIntent(
         testIntent,
         delegatorKey,
         agentAccount.address,
         11155111,
       );
 
-      const report = generateAuditReport(testIntent, delegation);
+      const report = generateAuditReport(testIntent, result.delegation);
 
       expect(report.allows.length).toBeGreaterThan(0);
       expect(report.prevents.length).toBeGreaterThan(0);

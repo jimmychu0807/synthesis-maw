@@ -1,10 +1,14 @@
 import type { Address, Hex } from "viem";
-import { encodePacked } from "viem";
+import { createPublicClient, encodePacked, http } from "viem";
+import { sepolia, mainnet } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   createDelegation,
-  signDelegation,
   getSmartAccountsEnvironment,
+  toMetaMaskSmartAccount,
+  Implementation,
   type Delegation,
+  type MetaMaskSmartAccount,
 } from "@metamask/smart-accounts-kit";
 import { reasoningLlm } from "../venice/llm.js";
 import {
@@ -116,46 +120,51 @@ Rules:
 }
 
 // ---------------------------------------------------------------------------
-// Token address resolver
+// createDelegatorSmartAccount — create and optionally deploy a MetaMask
+// Smart Account that serves as the delegation authority.
 // ---------------------------------------------------------------------------
 
-const TOKEN_ADDRESSES: Record<string, { sepolia: Address; base: Address }> = {
-  ETH: {
-    sepolia: CONTRACTS.WETH_SEPOLIA,
-    base: CONTRACTS.WETH_BASE,
-  },
-  WETH: {
-    sepolia: CONTRACTS.WETH_SEPOLIA,
-    base: CONTRACTS.WETH_BASE,
-  },
-  USDC: {
-    sepolia: CONTRACTS.USDC_SEPOLIA,
-    base: CONTRACTS.USDC_BASE,
-  },
-};
-
-function resolveTokenAddress(
-  symbol: string,
+export async function createDelegatorSmartAccount(
+  delegatorKey: `0x${string}`,
   chainId: number,
-): Address | undefined {
-  const entry = TOKEN_ADDRESSES[symbol.toUpperCase()];
-  if (!entry) return undefined;
-  // Ethereum Sepolia = 11155111, Base = 8453, Base Sepolia = 84532
-  if (chainId === 11155111 || chainId === 84532) return entry.sepolia;
-  if (chainId === 8453) return entry.base;
-  return undefined;
+): Promise<MetaMaskSmartAccount> {
+  const chain = chainId === 11155111 ? sepolia : mainnet;
+  const publicClient = createPublicClient({ chain, transport: http() });
+  const delegatorAccount = privateKeyToAccount(delegatorKey);
+
+  const smartAccount = await toMetaMaskSmartAccount({
+    client: publicClient,
+    implementation: Implementation.Hybrid,
+    deployParams: [delegatorAccount.address, [], [], []],
+    deploySalt: "0x",
+    signer: { account: delegatorAccount },
+  });
+
+  return smartAccount;
 }
 
 // ---------------------------------------------------------------------------
 // createDelegationFromIntent — compile an IntentParse into a signed delegation
 // ---------------------------------------------------------------------------
 
+export interface DelegationResult {
+  delegation: Delegation;
+  delegatorSmartAccount: MetaMaskSmartAccount;
+}
+
 export async function createDelegationFromIntent(
   intent: IntentParse,
   delegatorKey: `0x${string}`,
   agentAddress: Address,
   chainId: number,
-): Promise<Delegation> {
+): Promise<DelegationResult> {
+  // Create a MetaMask Smart Account for the delegator.
+  // The DelegationManager requires the delegator to be a deployed smart account.
+  const delegatorSmartAccount = await createDelegatorSmartAccount(
+    delegatorKey,
+    chainId,
+  );
+
   const environment = getSmartAccountsEnvironment(chainId);
 
   // Timestamp caveat: delegation expires after timeWindowDays
@@ -183,46 +192,45 @@ export async function createDelegationFromIntent(
     },
   ];
 
-  // Determine the primary ERC-20 token to constrain
-  const tokens = Object.keys(intent.targetAllocation);
-  const primaryToken =
-    tokens.find((t) => t.toUpperCase() !== "USDC") ?? tokens[0]!;
-  const tokenAddress = resolveTokenAddress(primaryToken, chainId);
+  // Use functionCall scope — constrains the agent to only call the Uniswap
+  // Universal Router's execute() function, with a max ETH value per call.
+  // The DelegationManager enforces these constraints on-chain when the agent
+  // redeems the delegation.
+  const totalBudgetUsd = intent.dailyBudgetUsd * intent.timeWindowDays;
+  const conservativeEthPrice = 500; // low floor so delegation stays valid if ETH drops
+  const maxEth = totalBudgetUsd / conservativeEthPrice;
+  const maxValueWei = BigInt(Math.ceil(maxEth * 1e18));
 
-  // Calculate max amount: dailyBudgetUsd * timeWindowDays (in USDC decimals: 6)
-  const maxAmountRaw = BigInt(
-    Math.ceil(intent.dailyBudgetUsd * intent.timeWindowDays * 1e6),
-  );
+  // Resolve Uniswap router for this chain
+  const routerAddress =
+    chainId === 11155111
+      ? CONTRACTS.UNISWAP_ROUTER_SEPOLIA
+      : CONTRACTS.UNISWAP_ROUTER_MAINNET;
 
-  // Choose scope based on whether we have a known token
-  const scopeTokenAddress = tokenAddress ?? CONTRACTS.USDC_SEPOLIA;
-  const scope = {
-    type: "erc20TransferAmount" as const,
-    tokenAddress: scopeTokenAddress,
-    maxAmount: maxAmountRaw,
-  };
-
-  const { privateKeyToAccount } = await import("viem/accounts");
-  const delegatorAccount = privateKeyToAccount(delegatorKey);
+  // execute(bytes,bytes[],uint256) selector = 0x3593564c
+  const EXECUTE_SELECTOR = "0x3593564c" as Hex;
 
   const delegation = createDelegation({
-    from: delegatorAccount.address as Hex,
+    from: delegatorSmartAccount.address as Hex,
     to: agentAddress as Hex,
     environment,
-    scope,
+    scope: {
+      type: "functionCall" as const,
+      targets: [routerAddress],
+      selectors: [EXECUTE_SELECTOR],
+      valueLte: { maxValue: maxValueWei },
+    },
     caveats,
   });
 
-  // Sign the delegation (async — returns Promise<Hex>)
-  const signature = await signDelegation({
-    privateKey: delegatorKey,
-    delegation,
-    delegationManager: CONTRACTS.DELEGATION_MANAGER,
-    chainId,
-  });
+  // Sign the delegation using the smart account's signDelegation method
+  const signature = await delegatorSmartAccount.signDelegation({ delegation });
 
   return {
-    ...delegation,
-    signature,
+    delegation: {
+      ...delegation,
+      signature,
+    },
+    delegatorSmartAccount,
   };
 }

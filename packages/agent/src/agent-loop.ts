@@ -2,7 +2,7 @@ import type { Address, Hex } from "viem";
 import { createWalletClient, createPublicClient, http, parseUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, base } from "viem/chains";
-import type { Delegation } from "@metamask/smart-accounts-kit";
+import type { Delegation, MetaMaskSmartAccount } from "@metamask/smart-accounts-kit";
 
 import { env, CONTRACTS, CHAINS } from "./config.js";
 import type { IntentParse } from "./venice/schemas.js";
@@ -17,8 +17,8 @@ import {
   detectAdversarialIntent,
 } from "./delegation/compiler.js";
 import { generateAuditReport, type AuditReport } from "./delegation/audit.js";
-import { createRedeemClient, redeemDelegation } from "./delegation/redeemer.js";
-import { getQuote, createSwap } from "./uniswap/trading.js";
+import { redeemDelegation } from "./delegation/redeemer.js";
+import { getQuote, createSwap, checkApproval } from "./uniswap/trading.js";
 import { logAction, logStart, logStop } from "./logging/agent-log.js";
 import { getBudgetTier, getRecommendedModel } from "./logging/budget.js";
 import { registerAgent, giveFeedback } from "./identity/erc8004.js";
@@ -38,6 +38,7 @@ export interface AgentConfig {
 
 export interface AgentState {
   delegation: Delegation | null;
+  delegatorSmartAccount: MetaMaskSmartAccount | null;
   tradesExecuted: number;
   totalSpentUsd: number;
   running: boolean;
@@ -119,6 +120,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<void> {
 
   const state: AgentState = {
     delegation: null,
+    delegatorSmartAccount: null,
     tradesExecuted: 0,
     totalSpentUsd: 0,
     running: true,
@@ -183,12 +185,14 @@ export async function runAgentLoop(config: AgentConfig): Promise<void> {
   console.log("Creating delegation...");
   const startDelegation = Date.now();
   try {
-    state.delegation = await createDelegationFromIntent(
+    const delegationResult = await createDelegationFromIntent(
       config.intent,
       config.delegatorKey,
       agentAddress,
       config.chainId,
     );
+    state.delegation = delegationResult.delegation;
+    state.delegatorSmartAccount = delegationResult.delegatorSmartAccount;
     logAction("delegation_created", {
       tool: "metamask-delegation",
       duration_ms: Date.now() - startDelegation,
@@ -462,7 +466,14 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
 
   // 7. Safety checks
   const swap = decision.targetSwap;
-  const swapAmountUsd = (Number(swap.sellAmount) || 0) * ethPrice.price;
+  // For stablecoins (USDC), sellAmount is already in USD terms.
+  // For ETH/WETH, multiply by ETH price to get USD value.
+  const isStablecoin = ["USDC", "USDT", "DAI"].includes(
+    swap.sellToken.toUpperCase(),
+  );
+  const swapAmountUsd = isStablecoin
+    ? Number(swap.sellAmount) || 0
+    : (Number(swap.sellAmount) || 0) * ethPrice.price;
 
   if (
     state.totalSpentUsd + swapAmountUsd >
@@ -483,7 +494,7 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
     return;
   }
 
-  // 8. Get Uniswap quote
+  // 8. Check approval & get Uniswap quote
   console.log(
     `Quoting swap: ${swap.sellAmount} ${swap.sellToken} -> ${swap.buyToken}`,
   );
@@ -495,6 +506,53 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
   const decimals = swap.sellToken.toUpperCase() === "USDC" ? 6 : 18;
   const amountRaw = parseUnits(swap.sellAmount, decimals).toString();
 
+  // Determine if we can use delegation for this swap.
+  // Delegation executes from the delegator's smart account, so:
+  // - ETH sells: smart account sends ETH value to Uniswap router → works with functionCall scope
+  // - ERC-20 sells: smart account needs token balance + Permit2 → use direct tx from agent EOA
+  const isEthSell = swap.sellToken.toUpperCase() === "ETH";
+  const canUseDelegation =
+    isEthSell && state.delegation && state.delegatorSmartAccount;
+
+  // For delegation path: swapper is the delegator smart account
+  // For direct path: swapper is the agent EOA
+  const swapperAddress = canUseDelegation
+    ? state.delegatorSmartAccount!.address
+    : agentAddress;
+
+  // For ERC-20 tokens sold from agent EOA, check if Permit2 approval is needed
+  if (!isEthSell && !canUseDelegation) {
+    const approval = await checkApproval({
+      token: sellTokenAddress,
+      amount: amountRaw,
+      chainId: config.chainId,
+      walletAddress: agentAddress,
+    });
+
+    if (approval.approval?.transactionRequest) {
+      console.log(`Sending Permit2 approval for ${swap.sellToken}...`);
+      const approvalWallet = createWalletClient({
+        account: privateKeyToAccount(config.agentKey),
+        chain,
+        transport: http(),
+      });
+      const approvalClient = createPublicClient({ chain, transport: http() });
+      const approvalTx = await approvalWallet.sendTransaction({
+        to: approval.approval.transactionRequest.to,
+        data: approval.approval.transactionRequest.data,
+        value: BigInt(approval.approval.transactionRequest.value || "0"),
+        chain,
+        account: approvalWallet.account,
+      });
+      await approvalClient.waitForTransactionReceipt({ hash: approvalTx });
+      console.log(`Permit2 approval confirmed: ${approvalTx}`);
+      logAction("permit2_approval", {
+        tool: "uniswap-permit2",
+        result: { txHash: approvalTx, token: swap.sellToken },
+      });
+    }
+  }
+
   const startQuote = Date.now();
   try {
     const quote = await getQuote({
@@ -503,7 +561,7 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
       amount: amountRaw,
       type: "EXACT_INPUT",
       chainId: config.chainId,
-      swapper: agentAddress,
+      swapper: swapperAddress,
       slippageTolerance: config.intent.maxSlippage * 100,
     });
 
@@ -515,6 +573,8 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
         output: quote.quote.output,
         routing: quote.routing,
         hasPermitData: !!quote.permitData,
+        swapper: swapperAddress,
+        viaDelegation: !!canUseDelegation,
       },
     });
 
@@ -522,7 +582,7 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
       `Quote: ${swap.sellAmount} ${swap.sellToken} -> ${quote.quote.output.amount} ${swap.buyToken}`,
     );
 
-    // 9. Execute swap via delegation redemption (ERC-7710)
+    // 9. Execute swap
     const walletClient = createWalletClient({
       account: privateKeyToAccount(config.agentKey),
       chain,
@@ -534,9 +594,9 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
       transport: http(),
     });
 
-    // Sign permit data if present
+    // Sign permit data if present (only for direct tx path — smart account can't sign)
     let permitSignature: Hex | undefined;
-    if (quote.permitData) {
+    if (quote.permitData && !canUseDelegation) {
       // Uniswap Trading API returns permitData as opaque JSON (Record<string, unknown>).
       // viem's signTypedData expects narrower types (TypedDataDomain, mapped type objects).
       // The actual runtime shapes match — Uniswap's API produces valid EIP-712 typed data —
@@ -544,56 +604,92 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
       // types generic rather than duplicating viem's internal type hierarchy.
       const domain = quote.permitData.domain as Parameters<typeof walletClient.signTypedData>[0]["domain"];
       const types = quote.permitData.types as Parameters<typeof walletClient.signTypedData>[0]["types"];
+
+      // Derive the primaryType from the types object. The Uniswap API returns
+      // different primary types depending on the flow:
+      //   - PermitWitnessTransferFrom (Universal Router / signature-based permits)
+      //   - PermitSingle (Permit2 allowance-based permits)
+      // The primary type is the non-EIP712Domain key in the types object.
+      const typeKeys = Object.keys(quote.permitData.types).filter(
+        (k) => k !== "EIP712Domain",
+      );
+      // Use the first non-nested type (one that isn't referenced by other types)
+      const referencedTypes = new Set(
+        Object.values(quote.permitData.types)
+          .flat()
+          .map((f) => (f as Record<string, string>).type)
+          .filter((t) => typeKeys.includes(t)),
+      );
+      const primaryType =
+        typeKeys.find((k) => !referencedTypes.has(k)) ?? typeKeys[0]!;
+
       permitSignature = await walletClient.signTypedData({
         account: walletClient.account,
         domain,
         types,
-        primaryType: "PermitWitnessTransferFrom",
+        primaryType,
         message: quote.permitData.values as Record<string, unknown>,
       });
     }
 
-    const swapResponse = await createSwap(quote, permitSignature);
+    const swapResponse = await createSwap(quote, permitSignature, {
+      disableSimulation: !!canUseDelegation,
+    });
 
-    // Execute through delegation if we have one, otherwise direct tx
+    // Execute through delegation for ETH sells, direct tx otherwise
     const startTx = Date.now();
     let txHash: Hex;
+    let usedDelegation = false;
 
-    if (state.delegation) {
-      // Use ERC-7710 delegation redemption
-      const redeemClient = createRedeemClient(config.agentKey, chain);
+    if (canUseDelegation) {
+      // ERC-7710 delegation redemption: DelegationManager executes the swap
+      // from the delegator's smart account. The redeemer handles funding the
+      // smart account with the required ETH before executing.
       try {
-        txHash = await redeemDelegation(redeemClient, {
-          delegation: state.delegation,
+        txHash = await redeemDelegation(config.agentKey, chain, {
+          delegation: state.delegation!,
+          delegatorSmartAccount: state.delegatorSmartAccount!,
           call: {
-            to: swapResponse.swap.to,
-            data: swapResponse.swap.data,
+            to: swapResponse.swap.to as Hex,
+            data: swapResponse.swap.data as Hex,
             value: BigInt(swapResponse.swap.value || "0"),
           },
         });
+        usedDelegation = true;
         console.log(`Swap executed via delegation redemption (ERC-7710)`);
       } catch (delegationErr) {
-        // Fallback: if delegation redemption fails (e.g., DelegationManager
-        // not deployed on this testnet), execute as plain tx and log the attempt
+        // Fallback: re-quote with agent address and execute directly
         const delegationMsg =
           delegationErr instanceof Error ? delegationErr.message : String(delegationErr);
         console.log(
-          `Delegation redemption failed (${delegationMsg}), executing as direct tx`,
+          `Delegation redemption failed (${delegationMsg}), falling back to direct tx`,
         );
         logAction("delegation_redeem_failed", {
           tool: "metamask-delegation",
           error: delegationMsg,
         });
 
+        // Re-quote with agent address since the original quote was for the smart account
+        const fallbackQuote = await getQuote({
+          tokenIn: sellTokenAddress,
+          tokenOut: buyTokenAddress,
+          amount: amountRaw,
+          type: "EXACT_INPUT",
+          chainId: config.chainId,
+          swapper: agentAddress,
+          slippageTolerance: config.intent.maxSlippage * 100,
+        });
+        const fallbackSwap = await createSwap(fallbackQuote);
         txHash = await walletClient.sendTransaction({
-          to: swapResponse.swap.to,
-          data: swapResponse.swap.data,
-          value: BigInt(swapResponse.swap.value || "0"),
+          to: fallbackSwap.swap.to,
+          data: fallbackSwap.swap.data,
+          value: BigInt(fallbackSwap.swap.value || "0"),
           chain,
           account: walletClient.account,
         });
       }
     } else {
+      // Direct tx from agent EOA (for ERC-20 sells or when no delegation)
       txHash = await walletClient.sendTransaction({
         to: swapResponse.swap.to,
         data: swapResponse.swap.data,
@@ -629,7 +725,7 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
         sellToken: swap.sellToken,
         buyToken: swap.buyToken,
         sellAmount: swap.sellAmount,
-        viaDelegation: !!state.delegation,
+        viaDelegation: usedDelegation,
       },
     });
 

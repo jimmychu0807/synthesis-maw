@@ -28,6 +28,7 @@ function mockAgentState(
       body: JSON.stringify({
         running: true,
         cycle: 3,
+        ethPrice: 2000,
         drift: 0.02,
         totalValue: 1500,
         trades: 1,
@@ -210,5 +211,77 @@ test.describe("Monitor Screen", () => {
     await expect(driftValue).toBeVisible();
     // Verify it has the danger color class
     await expect(driftValue).toHaveClass(/text-accent-danger/);
+  });
+
+  test("shows not-deployed state with Go to Configure button", async ({
+    page,
+  }) => {
+    await page.route("**/api/state", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          running: false,
+          cycle: 0,
+          ethPrice: 0,
+          drift: 0,
+          totalValue: 0,
+          trades: 0,
+          totalSpent: 0,
+          budgetTier: "normal",
+          allocation: {},
+          target: {},
+          transactions: [],
+          feed: [],
+          audit: null,
+        }),
+      }),
+    );
+
+    // Navigate to monitor via deploy flow first (need to get past disabled tabs)
+    await mockAgentState(page, { running: false, cycle: 0 });
+    await page.route("**/api/deploy", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_DEPLOY_RESPONSE),
+      }),
+    );
+    await page.goto("/");
+    const textarea = page.getByPlaceholder(/60\/40/);
+    await textarea.fill("60/40 ETH/USDC");
+    await page.getByRole("button", { name: /compile & deploy/i }).click();
+    await expect(page.getByText("Parsed Intent")).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Override the state mock to return not-running BEFORE clicking View Monitor
+    await page.unrouteAll();
+    await page.route("**/api/state", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          running: false,
+          cycle: 0,
+          ethPrice: 0,
+          drift: 0,
+          totalValue: 0,
+          trades: 0,
+          totalSpent: 0,
+          budgetTier: "normal",
+          allocation: {},
+          target: {},
+          transactions: [],
+          feed: [],
+          audit: null,
+        }),
+      }),
+    );
+
+    await page.getByRole("button", { name: /view monitor/i }).click();
+    await expect(
+      page.getByRole("button", { name: /go to configure/i }),
+    ).toBeVisible({ timeout: 5000 });
   });
 });
