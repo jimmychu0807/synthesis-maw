@@ -1,3 +1,10 @@
+/**
+ * Zod validation schemas for all LLM structured outputs: intent parsing,
+ * rebalance decisions, market analysis, and price responses.
+ * Types derived via z.infer to prevent schema/type drift.
+ *
+ * @module @veil/agent/venice/schemas
+ */
 import { z } from "zod";
 import { ParsedIntentSchema, type ParsedIntent } from "@veil/common";
 
