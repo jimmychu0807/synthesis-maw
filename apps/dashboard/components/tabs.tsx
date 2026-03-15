@@ -22,7 +22,7 @@ export function Tabs({ activeTab, onTabChange, hasDeployed }: TabsProps) {
   ];
 
   return (
-    <nav className="flex items-center gap-1 border-b border-border px-6">
+    <nav role="tablist" className="flex items-center gap-1 border-b border-border px-6">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const isDisabled = tab.disabled;
@@ -30,6 +30,8 @@ export function Tabs({ activeTab, onTabChange, hasDeployed }: TabsProps) {
         return (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={isActive}
             onClick={() => !isDisabled && onTabChange(tab.id)}
             disabled={isDisabled}
             className={`

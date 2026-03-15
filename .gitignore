@@ -7,3 +7,6 @@ agent_log.jsonl
 *.tsbuildinfo
 .turbo/
 .pnpm-approved-builds
+test-results/
+playwright-report/
+.next/
