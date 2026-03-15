@@ -74,6 +74,33 @@ Root `package.json` uses pnpm workspaces. Run everything from root:
 - Phase 5 (Next.js frontend): NOT STARTED
 - See `docs/plans/2026-03-14-full-project-plan.md` for full plan
 
+## Design Context
+
+### Users
+
+DeFi-savvy individuals and hackathon judges. They understand wallet addresses, token allocations, and trading terminology. They're evaluating both the tech and the presentation. Context: sitting at a laptop, reviewing a 3-minute demo or exploring the live app. The job: see the agent's intent, understand the safety constraints, and monitor autonomous trading in real time.
+
+### Brand Personality
+
+**Sophisticated. Private. Powerful.** Like a modernized Bloomberg Terminal for on-chain autonomous agents. Every pixel communicates competence and trustworthiness. The product handles real money — the UI must reflect that gravity.
+
+### Aesthetic Direction
+
+- **Visual tone:** Modern dark finance. Dense but not cluttered. Professional, not playful.
+- **Reference:** Bloomberg Terminal (modernized) — maximum information density, monospace numbers, professional trading feel. Also draws from Linear's spacing discipline and Stripe's typographic hierarchy.
+- **Anti-references:** Neon hacker terminals (too gimmicky), generic SaaS dashboards (too bland), Web3 "degen" aesthetics (too unserious).
+- **Theme:** Dark only. `#09090b` zinc-950 background. Emerald-500 as primary accent (positive/CTA). Indigo-500 secondary. Red/amber for danger/warning states.
+- **Typography:** Inter for body, JetBrains Mono for all numbers, addresses, and data. Tabular-nums for column alignment.
+- **Cards:** Solid zinc-900 fill, 1px zinc-800 border, 8px radius. No shadows, no glassmorphism.
+
+### Design Principles
+
+1. **Data density over decoration** — Every element earns its space. No filler, no ornamental graphics. If it doesn't inform, it doesn't belong.
+2. **Numbers are first-class citizens** — Financial data uses monospace, tabular-nums, and careful alignment. Prices, percentages, and addresses are always legible at a glance.
+3. **Trust through transparency** — Show what the agent is allowed to do, what it's prevented from doing, and what it actually did. The audit report is the product's credibility.
+4. **Restraint in color** — Emerald for positive/active, red for danger, amber for warnings. Everything else is grayscale. Color means something — never decorative.
+5. **Responsive without compromise** — Desktop is the primary viewport (judge demos), but mobile must be fully functional. Stack gracefully, never truncate critical data.
+
 ## Best practices/Standards
 
 ### React standards

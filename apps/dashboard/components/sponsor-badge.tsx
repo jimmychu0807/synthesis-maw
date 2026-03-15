@@ -1,0 +1,12 @@
+interface SponsorBadgeProps {
+  text: string;
+}
+
+export function SponsorBadge({ text }: SponsorBadgeProps) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-text-tertiary">
+      <span className="inline-block h-1 w-1 rounded-full bg-text-tertiary" />
+      {text}
+    </span>
+  );
+}

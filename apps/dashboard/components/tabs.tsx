@@ -1,0 +1,54 @@
+"use client";
+
+export type TabId = "configure" | "audit" | "monitor";
+
+interface Tab {
+  id: TabId;
+  label: string;
+  disabled?: boolean;
+}
+
+interface TabsProps {
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
+  hasDeployed: boolean;
+}
+
+export function Tabs({ activeTab, onTabChange, hasDeployed }: TabsProps) {
+  const tabs: Tab[] = [
+    { id: "configure", label: "Configure" },
+    { id: "audit", label: "Audit", disabled: !hasDeployed },
+    { id: "monitor", label: "Monitor", disabled: !hasDeployed },
+  ];
+
+  return (
+    <nav className="flex items-center gap-1 border-b border-border px-6">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        const isDisabled = tab.disabled;
+
+        return (
+          <button
+            key={tab.id}
+            onClick={() => !isDisabled && onTabChange(tab.id)}
+            disabled={isDisabled}
+            className={`
+              relative px-4 py-3 text-sm font-medium transition-colors
+              ${isActive
+                ? "text-text-primary"
+                : isDisabled
+                  ? "text-text-tertiary cursor-not-allowed"
+                  : "text-text-secondary hover:text-text-primary cursor-pointer"
+              }
+            `}
+          >
+            {tab.label}
+            {isActive && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-positive" />
+            )}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
