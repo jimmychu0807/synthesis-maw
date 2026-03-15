@@ -27,6 +27,9 @@ Root `package.json` uses pnpm workspaces. Run everything from root:
 - `pnpm run serve` — API server on :3147
 - `pnpm run dev` — CLI agent
 - `pnpm run codegen` — GraphQL codegen for The Graph
+- `pnpm run dev:dashboard` — Next.js dashboard dev server
+- `pnpm run build:dashboard` — build dashboard for production
+- `pnpm --filter @veil/dashboard test:e2e` — Playwright e2e tests (uses port 3100)
 
 ## Chains
 
@@ -71,7 +74,7 @@ Root `package.json` uses pnpm workspaces. Run everything from root:
 - Phase 2 (Monorepo): COMPLETE
 - Phase 3 (Agent e2e run): COMPLETE (2 real swaps on Sepolia, 3 ERC-8004 txs on Base Sepolia)
 - Phase 4 (Git push): NOT STARTED
-- Phase 5 (Next.js frontend): NOT STARTED
+- Phase 5 (Next.js frontend): IN PROGRESS — all 3 screens built, 14 Playwright e2e tests passing, polish pass done. Remaining: Storybook (optional), integration test with agent server, Vercel deploy.
 - See `docs/plans/2026-03-14-full-project-plan.md` for full plan
 
 ## Design Context
