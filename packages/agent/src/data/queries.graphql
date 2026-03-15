@@ -1,0 +1,25 @@
+query GetPools($token0: String!, $token1: String!) {
+  pools(
+    first: 5
+    orderBy: totalValueLockedUSD
+    orderDirection: desc
+    where: {
+      or: [
+        { token0_: { symbol: $token0 }, token1_: { symbol: $token1 } }
+        { token0_: { symbol: $token1 }, token1_: { symbol: $token0 } }
+      ]
+    }
+  ) {
+    id
+    token0 {
+      symbol
+    }
+    token1 {
+      symbol
+    }
+    feeTier
+    totalValueLockedUSD
+    volumeUSD
+    txCount
+  }
+}

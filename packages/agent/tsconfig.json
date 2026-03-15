@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "codegen.ts", "__generated__/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

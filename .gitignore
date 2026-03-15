@@ -1,0 +1,9 @@
+.env
+node_modules/
+dist/
+__generated__/
+agent_log.jsonl
+.playwright-mcp/
+*.tsbuildinfo
+.turbo/
+.pnpm-approved-builds

@@ -1,0 +1,20 @@
+{
+  "name": "veil",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "description": "Intent-compiled private DeFi agent — monorepo",
+  "scripts": {
+    "dev": "pnpm --filter @veil/agent dev",
+    "build": "turbo run build",
+    "test": "pnpm --filter @veil/agent test",
+    "test:unit": "pnpm --filter @veil/agent test",
+    "test:e2e": "pnpm --filter @veil/agent test:e2e",
+    "serve": "pnpm --filter @veil/agent serve",
+    "codegen": "pnpm --filter @veil/agent codegen",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "manifest_version": "1.0",
+  "agent": {
+    "id": "ajson://veil/defi-rebalancer",
+    "name": "Veil — Intent-Compiled Private DeFi Agent",
+    "description": "An autonomous agent that compiles natural language portfolio rules into on-chain delegation constraints, privately reasons about when to rebalance via Venice AI, and executes trades on Uniswap — with every decision auditable but no strategy ever leaked.",
+    "version": "0.1.0",
+    "author": "neilei",
+    "license": "MIT"
+  },
+  "profiles": ["core", "exec", "gov"],
+  "capabilities": [
+    {
+      "id": "intent_compilation",
+      "description": "Parse natural language portfolio intent into structured delegation parameters with adversarial detection",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "intentText": {
+            "type": "string",
+            "description": "Natural language portfolio strategy"
+          }
+        },
+        "required": ["intentText"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "targetAllocation": { "type": "object" },
+          "dailyBudgetUsd": { "type": "number" },
+          "timeWindowDays": { "type": "number" },
+          "maxTradesPerDay": { "type": "number" },
+          "maxSlippage": { "type": "number" },
+          "driftThreshold": { "type": "number" }
+        }
+      }
+    },
+    {
+      "id": "portfolio_monitoring",
+      "description": "Monitor on-chain portfolio balances, calculate allocation drift, and determine rebalancing needs",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "address": { "type": "string" },
+          "targetAllocation": { "type": "object" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "currentAllocation": { "type": "object" },
+          "drift": { "type": "object" },
+          "maxDrift": { "type": "number" }
+        }
+      }
+    },
+    {
+      "id": "autonomous_rebalancing",
+      "description": "Execute portfolio rebalancing trades on Uniswap within delegation constraints",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sellToken": { "type": "string" },
+          "buyToken": { "type": "string" },
+          "amount": { "type": "string" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "txHash": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "tool://venice/llm",
+      "name": "Venice AI LLM",
+      "type": "http",
+      "endpoint": "https://api.venice.ai/api/v1/",
+      "description": "Private AI inference with web search, structured output, and multi-model routing (qwen3-4b, gemini-3-flash, gemini-3-1-pro)",
+      "auth": { "method": "bearer", "token_env": "VENICE_API_KEY" }
+    },
+    {
+      "id": "tool://uniswap/trading-api",
+      "name": "Uniswap Trading API",
+      "type": "http",
+      "endpoint": "https://trade-api.gateway.uniswap.org/v1",
+      "description": "Quote and execute swaps with Permit2 signatures",
+      "auth": { "method": "api-key", "token_env": "UNISWAP_API_KEY" }
+    },
+    {
+      "id": "tool://thegraph/uniswap-v3",
+      "name": "The Graph — Uniswap V3 Subgraph",
+      "type": "graphql",
+      "endpoint": "https://gateway.thegraph.com/api/subgraphs/id/5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV",
+      "description": "Query Uniswap V3 pool data (TVL, volume, fee tiers)"
+    },
+    {
+      "id": "tool://metamask/delegation",
+      "name": "MetaMask Smart Accounts Kit",
+      "type": "library",
+      "description": "Create and sign ERC-7715 delegations with caveats, redeem via ERC-7710",
+      "version": "0.4.0-beta.1"
+    },
+    {
+      "id": "tool://viem/chain",
+      "name": "Viem — Chain Interaction",
+      "type": "library",
+      "description": "Read balances, send transactions, sign typed data on EVM chains",
+      "version": "2.31.4"
+    },
+    {
+      "id": "tool://erc8004/reputation",
+      "name": "ERC-8004 Reputation Registry",
+      "type": "contract",
+      "endpoint": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+      "description": "On-chain agent reputation feedback on Base"
+    }
+  ],
+  "runtime": {
+    "type": "node",
+    "version": "20",
+    "entrypoint": "src/index.ts",
+    "command": "npx tsx src/index.ts --intent \"60/40 ETH/USDC, $200/day, 7 days\""
+  },
+  "security": {
+    "sandbox": "process",
+    "tls_required": true,
+    "delegation_enforced": true,
+    "private_reasoning": true,
+    "policies": [
+      "All trades constrained by on-chain delegation caveats (ERC-7715/7710)",
+      "Venice AI inference with no-data-retention (private reasoning)",
+      "Budget limits enforced per-day and total via caveat enforcers",
+      "Adversarial intent detection before delegation creation",
+      "Pre-trade safety checks: budget, slippage, gas, delegation validity"
+    ]
+  },
+  "observability": {
+    "log_level": "info",
+    "log_format": "jsonl",
+    "log_file": "agent_log.jsonl",
+    "metrics_enabled": true,
+    "audit_events": [
+      "agent_start",
+      "agent_stop",
+      "delegation_created",
+      "audit_report",
+      "price_fetch",
+      "portfolio_check",
+      "rebalance_decision",
+      "quote_received",
+      "swap_executed",
+      "swap_failed",
+      "safety_block",
+      "cycle_complete",
+      "cycle_error"
+    ]
+  }
+}
