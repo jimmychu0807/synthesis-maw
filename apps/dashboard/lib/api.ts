@@ -3,7 +3,7 @@
  *
  * @module @veil/dashboard/lib/api
  */
-import type { AgentStateResponse, DeployResponse } from "./types";
+import type { AgentStateResponse, DeployResponse } from "@veil/common";
 
 export async function fetchAgentState(): Promise<AgentStateResponse> {
   const res = await fetch("/api/state");

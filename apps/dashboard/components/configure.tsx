@@ -8,7 +8,7 @@
 
 import { useState, useCallback } from "react";
 import { useDeploy } from "@/hooks/use-deploy";
-import type { DeployResponse } from "@/lib/types";
+import type { DeployResponse } from "@veil/common";
 
 interface ConfigureProps {
   onSuccess: (data: DeployResponse) => void;

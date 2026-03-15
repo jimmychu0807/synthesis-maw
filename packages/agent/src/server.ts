@@ -13,10 +13,10 @@ import { env } from "./config.js";
 import { compileIntent } from "./delegation/compiler.js";
 import { getAgentState, getAgentConfig, runAgentLoop } from "./agent-loop.js";
 import { registerAgent } from "./identity/erc8004.js";
-import type { AgentLogEntry } from "./logging/agent-log.js";
+import { DEFAULT_AGENT_PORT, API_PATHS, type AgentLogEntry, type AgentStateResponse, type DeployResponse } from "@veil/common";
 import { logger } from "./logging/logger.js";
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3147;
+const PORT = process.env.PORT ? Number(process.env.PORT) : DEFAULT_AGENT_PORT;
 const DASHBOARD_DIST = join(process.cwd(), "apps", "dashboard", "out");
 const LOG_PATH = join(process.cwd(), "agent_log.jsonl");
 
@@ -124,7 +124,7 @@ async function handleDeploy(req: IncomingMessage, res: ServerResponse) {
     await new Promise((r) => setTimeout(r, 3000));
 
     const state = getAgentState();
-    sendJson(res, {
+    const deployResponse: DeployResponse = {
       parsed,
       audit: state?.audit
         ? {
@@ -134,7 +134,8 @@ async function handleDeploy(req: IncomingMessage, res: ServerResponse) {
             warnings: state.audit.warnings,
           }
         : null,
-    });
+    };
+    sendJson(res, deployResponse);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error("[server] Deploy failed: %s", msg);
@@ -147,7 +148,7 @@ function handleState(_req: IncomingMessage, res: ServerResponse) {
   const config = getAgentConfig();
 
   if (!state || !config) {
-    sendJson(res, {
+    const defaultState: AgentStateResponse = {
       cycle: 0,
       running: false,
       ethPrice: 0,
@@ -161,11 +162,12 @@ function handleState(_req: IncomingMessage, res: ServerResponse) {
       feed: readLogFeed(),
       transactions: [],
       audit: null,
-    });
+    };
+    sendJson(res, defaultState);
     return;
   }
 
-  sendJson(res, {
+  const response: AgentStateResponse = {
     cycle: state.cycle,
     running: state.running,
     ethPrice: state.ethPrice,
@@ -186,7 +188,8 @@ function handleState(_req: IncomingMessage, res: ServerResponse) {
           warnings: state.audit.warnings,
         }
       : null,
-  });
+  };
+  sendJson(res, response);
 }
 
 function serveStaticFile(filePath: string, res: ServerResponse): boolean {
@@ -253,9 +256,9 @@ const server = createServer(async (req, res) => {
   }
 
   try {
-    if (url === "/api/deploy" && method === "POST") {
+    if (url === API_PATHS.deploy && method === "POST") {
       await handleDeploy(req, res);
-    } else if (url === "/api/state" && method === "GET") {
+    } else if (url === API_PATHS.state && method === "GET") {
       handleState(req, res);
     } else {
       // Serve React SPA (or static assets / vanilla fallback)

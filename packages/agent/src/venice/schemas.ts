@@ -6,6 +6,22 @@
  * @module @veil/agent/venice/schemas
  */
 import { z } from "zod";
+import { ParsedIntentSchema, type ParsedIntent } from "@veil/common";
+
+// Re-export base schema for type derivation
+export { ParsedIntentSchema };
+export type { ParsedIntent };
+export type IntentParse = ParsedIntent;
+
+// Agent-specific validation: wraps the shared schema with allocation sum check.
+// This lives here (not in @veil/common) because it's agent business logic.
+export const IntentParseSchema = ParsedIntentSchema.refine(
+  (data) => {
+    const sum = Object.values(data.targetAllocation).reduce((a, b) => a + b, 0);
+    return sum >= 0.95 && sum <= 1.05;
+  },
+  { message: "Target allocation percentages must sum to ~1.0 (within 5% tolerance)" },
+);
 
 // Schema sent to the LLM via function calling. Uses an explicit array instead
 // of z.record() because Venice/Gemini's function calling drops dynamic keys
@@ -51,43 +67,6 @@ export const IntentParseLlmSchema = z
   );
 
 export type IntentParseLlm = z.infer<typeof IntentParseLlmSchema>;
-
-// Canonical schema used throughout the codebase for validation. Accepts the
-// Record<string, number> format that all downstream code expects.
-export const IntentParseSchema = z
-  .object({
-    targetAllocation: z
-      .record(z.string(), z.number())
-      .describe(
-        "Target allocation as token symbol to percentage (0-1). e.g. { ETH: 0.6, USDC: 0.4 }",
-      ),
-    dailyBudgetUsd: z
-      .number()
-      .describe("Maximum USD value of trades per day"),
-    timeWindowDays: z
-      .number()
-      .describe("How many days the delegation should last"),
-    maxTradesPerDay: z
-      .number()
-      .describe("Maximum number of trades per day"),
-    maxSlippage: z
-      .number()
-      .describe("Maximum slippage as decimal, e.g. 0.005 for 0.5%"),
-    driftThreshold: z
-      .number()
-      .describe(
-        "Minimum allocation drift to trigger rebalance, e.g. 0.05 for 5%",
-      ),
-  })
-  .refine(
-    (data) => {
-      const sum = Object.values(data.targetAllocation).reduce((a, b) => a + b, 0);
-      return sum >= 0.95 && sum <= 1.05;
-    },
-    { message: "Target allocation percentages must sum to ~1.0 (within 5% tolerance)" },
-  );
-
-export type IntentParse = z.infer<typeof IntentParseSchema>;
 
 export const RebalanceDecisionSchema = z.object({
   shouldRebalance: z

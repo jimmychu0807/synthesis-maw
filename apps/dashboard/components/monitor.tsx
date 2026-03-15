@@ -11,58 +11,16 @@ import { StatsCard } from "./stats-card";
 import { SponsorBadge } from "./sponsor-badge";
 import { ErrorBanner } from "./error-banner";
 import { SkeletonCard, SkeletonTable } from "./skeleton";
-import type { AgentLogEntry, SwapRecord } from "@/lib/types";
-
-const AGENT_ADDRESS = "0xf13021F02E23a8113C1bD826575a1682F6Fac927";
-
-const TOKEN_COLORS: Record<string, { bg: string; label: string }> = {
-  ETH: { bg: "bg-emerald-500", label: "ETH" },
-  WETH: { bg: "bg-emerald-500", label: "WETH" },
-  USDC: { bg: "bg-indigo-500", label: "USDC" },
-};
-
-function getTokenColor(token: string): string {
-  return TOKEN_COLORS[token]?.bg ?? "bg-zinc-500";
-}
-
-function getTokenLabel(token: string): string {
-  return TOKEN_COLORS[token]?.label ?? token;
-}
-
-function truncateHash(hash: string): string {
-  if (hash.length < 12) return hash;
-  return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
-}
-
-function truncateAddress(address: string): string {
-  if (address.length < 12) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatTimestamp(timestamp: string): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) return `${diffSec}s ago`;
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHour < 24) return `${diffHour}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
+import type { AgentLogEntry, SwapRecord } from "@veil/common";
+import {
+  AGENT_ADDRESS,
+  truncateHash,
+  truncateAddress,
+  formatCurrency,
+  formatTimestamp,
+  getTokenBg,
+  getTokenLabel,
+} from "@veil/common";
 
 function parseBudgetMax(budgetTier: string): number | null {
   const match = budgetTier.match(/\$?([\d,]+(?:\.\d+)?)/);
@@ -129,7 +87,7 @@ function AllocationBar({
           return (
             <div
               key={token}
-              className={`${getTokenColor(token)} ${ghost ? "opacity-25" : "opacity-90"} flex items-center justify-center text-[10px] font-medium text-white transition-all duration-500`}
+              className={`${getTokenBg(token)} ${ghost ? "opacity-25" : "opacity-90"} flex items-center justify-center text-[10px] font-medium text-white transition-all duration-500`}
               style={{ width: `${pct}%` }}
               title={`${getTokenLabel(token)}: ${pct.toFixed(1)}%`}
             >
@@ -143,7 +101,7 @@ function AllocationBar({
           const pct = total > 0 ? (value / total) * 100 : 0;
           return (
             <span key={token} className="flex items-center gap-1 text-[10px] text-text-tertiary">
-              <span className={`inline-block h-2 w-2 rounded-sm ${getTokenColor(token)}`} />
+              <span className={`inline-block h-2 w-2 rounded-sm ${getTokenBg(token)}`} />
               {getTokenLabel(token)} {pct.toFixed(1)}%
             </span>
           );
