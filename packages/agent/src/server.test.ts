@@ -146,6 +146,7 @@ interface MockServerResponse extends ServerResponse {
   body: string;
   headers: Record<string, string>;
   headWritten: boolean;
+  // Returns Record (not | null) because tests always write valid JSON bodies
   parsedBody: () => Record<string, unknown>;
 }
 
@@ -198,7 +199,8 @@ async function callHandler(
   req: IncomingMessage,
   res: MockServerResponse,
 ): Promise<void> {
-  // Cast to ServerResponse for the handler since MockServerResponse extends it
+  // MockServerResponse extends ServerResponse at the type level; the partial
+  // mock satisfies only the methods the handler actually calls
   await capturedHandler(req, res as ServerResponse);
   await new Promise((r) => setTimeout(r, 10));
 }

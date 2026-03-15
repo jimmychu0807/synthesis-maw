@@ -737,6 +737,7 @@ async function executeSwap(
     );
 
     // ERC-8004: give on-chain feedback rating the Uniswap service (non-blocking)
+    // TODO: use dynamic state.agentId once main's agentId tracking is merged
     giveFeedback(1n, 5, "swap-execution", "defi", "base-sepolia")
       .then((fbHash) => {
         logger.info(`[erc8004] Feedback submitted: ${fbHash}`);
