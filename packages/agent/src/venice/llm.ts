@@ -81,11 +81,23 @@ export const researchLlm = getVeniceLlm({
   timeout: LLM_TIMEOUT_RESEARCH_MS,
 });
 
+const reasoningVeniceParams = {
+  venice_parameters: {
+    disable_thinking: false,
+    enable_web_search: "off" as const,
+    enable_web_scraping: false,
+    enable_web_citations: false,
+    include_search_results_in_stream: false,
+    return_search_results_as_documents: false,
+    include_venice_system_prompt: false,
+  },
+};
+
 // Reasoning: complex decisions, intent compilation, rebalance logic
 export const reasoningLlm = getVeniceLlm({
   model: override ?? "gemini-3-1-pro-preview",
   temperature: 0,
   maxRetries: 2,
-  modelKwargs: researchVeniceParams,
+  modelKwargs: reasoningVeniceParams,
   timeout: LLM_TIMEOUT_REASONING_MS,
 });

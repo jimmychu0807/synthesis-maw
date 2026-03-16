@@ -30,6 +30,7 @@ export interface PoolData {
 /**
  * Query Uniswap V3 subgraph for pool data between two tokens.
  * Returns pools sorted by TVL (descending), up to 5 results.
+ * Retries on transient failures (up to 2 retries with exponential backoff).
  */
 export async function getPoolData(
   token0Symbol: string,

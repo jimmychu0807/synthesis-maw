@@ -98,8 +98,8 @@ export function derivePrimaryType(
 
 /**
  * Sign Permit2 typed data returned from the Uniswap Trading API quote.
- * Automatically derives the EIP-712 primaryType from the types object
- * instead of hardcoding it.
+ * Uses {@link derivePrimaryType} to discover the EIP-712 primaryType
+ * from the generic types object rather than hardcoding it.
  */
 export async function signPermit2Data(
   walletClient: WalletClient,

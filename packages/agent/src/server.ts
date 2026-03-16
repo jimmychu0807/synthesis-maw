@@ -311,7 +311,14 @@ async function startup() {
   logger.info(`  API:            http://localhost:${PORT}/api/state`);
   logger.info("=".repeat(60));
 
-  // Register agent identity on Base Sepolia (awaited with retry)
+  server.listen(PORT, () => {
+    logger.info(`[server] Listening on http://localhost:${PORT}`);
+    logger.info(
+      `[server] Open dashboard or POST /api/deploy to start agent`,
+    );
+  });
+
+  // Register agent identity on Base Sepolia (non-blocking — server is already listening)
   try {
     const { txHash, agentId } = await withRetry(
       () => registerAgent(`https://github.com/neilei/veil`, "base-sepolia"),
@@ -321,13 +328,6 @@ async function startup() {
   } catch (err) {
     logger.error({ err }, "ERC-8004 registration failed after retries");
   }
-
-  server.listen(PORT, () => {
-    logger.info(`[server] Listening on http://localhost:${PORT}`);
-    logger.info(
-      `[server] Open dashboard or POST /api/deploy to start agent`,
-    );
-  });
 }
 
 startup();
