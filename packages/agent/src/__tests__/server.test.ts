@@ -162,6 +162,19 @@ vi.mock("../logging/intent-log.js", () => {
   }
   return { IntentLogger: MockLogger };
 });
+vi.mock("../agent-worker.js", () => {
+  class MockWorker {
+    intentId: string;
+    constructor(intentId: string) {
+      this.intentId = intentId;
+    }
+    start = vi.fn().mockResolvedValue(undefined);
+    stop = vi.fn().mockResolvedValue(undefined);
+    isRunning = vi.fn().mockReturnValue(false);
+    getState = vi.fn().mockReturnValue(null);
+  }
+  return { DefaultAgentWorker: MockWorker };
+});
 vi.mock("../auth.js", () => ({
   generateNonce: vi.fn().mockReturnValue("mock-nonce-123"),
   createAuthToken: vi.fn().mockReturnValue("mock-token"),

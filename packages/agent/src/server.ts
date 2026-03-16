@@ -33,6 +33,7 @@ import { IntentRepository } from "./db/repository.js";
 import { getDb } from "./db/connection.js";
 import { WorkerPool } from "./worker-pool.js";
 import { IntentLogger } from "./logging/intent-log.js";
+import { DefaultAgentWorker } from "./agent-worker.js";
 import {
   generateNonce,
   createAuthToken,
@@ -741,6 +742,11 @@ const server = createServer(async (req, res) => {
 async function startup() {
   // Initialize database
   repo = new IntentRepository(getDb());
+
+  // Wire up worker factory so WorkerPool can create AgentWorker instances
+  workerPool.setWorkerFactory(
+    (intentId) => new DefaultAgentWorker(intentId, { repo }),
+  );
 
   const agentAccount = privateKeyToAccount(env.AGENT_PRIVATE_KEY);
 
