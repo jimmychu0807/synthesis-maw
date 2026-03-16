@@ -19,10 +19,6 @@ describe("DEFAULT_AGENT_PORT", () => {
 });
 
 describe("API_PATHS", () => {
-  it("has a state path", () => {
-    expect(API_PATHS.state).toBe("/api/state");
-  });
-
   it("has auth and intent paths", () => {
     expect(API_PATHS.authNonce).toBe("/api/auth/nonce");
     expect(API_PATHS.authVerify).toBe("/api/auth/verify");

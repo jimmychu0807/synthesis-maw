@@ -1,6 +1,6 @@
 /**
  * @file Tests for Zod schemas — ParsedIntent, SwapRecord, AuditReport,
- * AgentLogEntry, AgentStateResponse.
+ * AgentLogEntry.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -8,12 +8,10 @@ import {
   SwapRecordSchema,
   AuditReportSchema,
   AgentLogEntrySchema,
-  AgentStateResponseSchema,
   type ParsedIntent,
   type SwapRecord,
   type AuditReport,
   type AgentLogEntry,
-  type AgentStateResponse,
 } from "../schemas.js";
 
 // ---------------------------------------------------------------------------
@@ -208,88 +206,4 @@ describe("AgentLogEntrySchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// AgentStateResponseSchema
-// ---------------------------------------------------------------------------
-
-describe("AgentStateResponseSchema", () => {
-  const valid: AgentStateResponse = {
-    cycle: 5,
-    running: true,
-    ethPrice: 2500,
-    drift: 0.03,
-    trades: 2,
-    totalSpent: 150.5,
-    budgetTier: "$200/day",
-    allocation: { ETH: 0.58, USDC: 0.42 },
-    target: { ETH: 0.6, USDC: 0.4 },
-    totalValue: 1000,
-    feed: [
-      {
-        timestamp: "2026-03-15T12:00:00.000Z",
-        sequence: 0,
-        action: "agent_start",
-      },
-    ],
-    transactions: [
-      {
-        txHash: "0xabc",
-        sellToken: "ETH",
-        buyToken: "USDC",
-        sellAmount: "0.1",
-        status: "confirmed",
-        timestamp: "2026-03-15T12:00:00.000Z",
-      },
-    ],
-    audit: {
-      allows: ["Swap"],
-      prevents: ["Withdraw"],
-      worstCase: "Loss",
-      warnings: [],
-    },
-    deployError: null,
-  };
-
-  it("accepts a valid agent state response", () => {
-    const result = AgentStateResponseSchema.safeParse(valid);
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts null audit", () => {
-    const result = AgentStateResponseSchema.safeParse({
-      ...valid,
-      audit: null,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts empty feed and transactions", () => {
-    const result = AgentStateResponseSchema.safeParse({
-      ...valid,
-      feed: [],
-      transactions: [],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects missing cycle", () => {
-    const { cycle: _, ...rest } = valid;
-    const result = AgentStateResponseSchema.safeParse(rest);
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts deployError as a string", () => {
-    const result = AgentStateResponseSchema.safeParse({
-      ...valid,
-      deployError: "MetaMask SDK timeout",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects missing deployError", () => {
-    const { deployError: _, ...rest } = valid;
-    const result = AgentStateResponseSchema.safeParse(rest);
-    expect(result.success).toBe(false);
-  });
-});
 

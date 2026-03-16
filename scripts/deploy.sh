@@ -171,7 +171,7 @@ cmd_deploy() {
 
   log "Deployed successfully."
   log "Dashboard: http://${VPS_HOST}:${PORT}"
-  log "API:       http://${VPS_HOST}:${PORT}/api/state"
+  log "API:       http://${VPS_HOST}:${PORT}/api/intents"
 }
 
 # --------------------------------------------------------------------------
@@ -192,7 +192,7 @@ cmd_logs() {
 cmd_status() {
   ssh_run "sudo systemctl status ${SERVICE_NAME} --no-pager -l" || true
   echo ""
-  ssh_run "curl -s http://localhost:${PORT}/api/state 2>/dev/null | head -c 500" || warn "Service not responding"
+  ssh_run "curl -s http://localhost:${PORT}/api/auth/nonce?wallet=0x0 2>/dev/null | head -c 500" || warn "Service not responding"
 }
 
 cmd_env() {

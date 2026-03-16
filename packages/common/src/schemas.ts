@@ -71,26 +71,4 @@ export const AgentLogEntrySchema = z.object({
 
 export type AgentLogEntry = z.infer<typeof AgentLogEntrySchema>;
 
-// ---------------------------------------------------------------------------
-// AgentStateResponse — the /api/state response shape
-// ---------------------------------------------------------------------------
-
-export const AgentStateResponseSchema = z.object({
-  cycle: z.number(),
-  running: z.boolean(),
-  ethPrice: z.number(),
-  drift: z.number(),
-  trades: z.number(),
-  totalSpent: z.number(),
-  budgetTier: z.string(),
-  allocation: z.record(z.string(), z.number()),
-  target: z.record(z.string(), z.number()),
-  totalValue: z.number(),
-  feed: z.array(AgentLogEntrySchema),
-  transactions: z.array(SwapRecordSchema),
-  audit: AuditReportSchema.nullable(),
-  deployError: z.string().nullable(),
-});
-
-export type AgentStateResponse = z.infer<typeof AgentStateResponseSchema>;
 

@@ -16,28 +16,6 @@ test.describe("Full Stack Integration", () => {
     await expect(page.getByPlaceholder(/60\/40/)).toBeVisible();
   });
 
-  test("state API returns valid JSON structure (legacy)", async ({ request }) => {
-    const response = await request.get("/api/state");
-    expect(response.status()).toBe(200);
-
-    const data = await response.json();
-    expect(typeof data.cycle).toBe("number");
-    expect(typeof data.running).toBe("boolean");
-    expect(typeof data.totalValue).toBe("number");
-    expect(typeof data.drift).toBe("number");
-    expect(typeof data.trades).toBe("number");
-    expect(typeof data.totalSpent).toBe("number");
-    expect(typeof data.budgetTier).toBe("string");
-    expect(typeof data.ethPrice).toBe("number");
-    expect(typeof data.allocation).toBe("object");
-    expect(typeof data.target).toBe("object");
-    expect(Array.isArray(data.feed)).toBe(true);
-    expect(Array.isArray(data.transactions)).toBe(true);
-    expect(
-      data.audit === null || typeof data.audit === "object",
-    ).toBe(true);
-  });
-
   test("parse-intent API returns valid parsed intent and audit", async ({
     request,
   }) => {

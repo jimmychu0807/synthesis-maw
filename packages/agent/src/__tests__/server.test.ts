@@ -188,7 +188,6 @@ vi.mock("@veil/common", async () => {
   return {
     DEFAULT_AGENT_PORT: 3147,
     API_PATHS: {
-      state: "/api/state",
       authNonce: "/api/auth/nonce",
       authVerify: "/api/auth/verify",
       parseIntent: "/api/parse-intent",
@@ -223,13 +222,7 @@ vi.mock("@veil/common", async () => {
   };
 });
 
-// Mock agent-loop with controllable getAgentState / getAgentConfig
-const mockGetAgentState = vi.fn().mockReturnValue(null);
-const mockGetAgentConfig = vi.fn().mockReturnValue(null);
-vi.mock("../agent-loop.js", () => ({
-  getAgentState: (...args: unknown[]) => mockGetAgentState(...args),
-  getAgentConfig: (...args: unknown[]) => mockGetAgentConfig(...args),
-}));
+vi.mock("../agent-loop.js", () => ({}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -330,8 +323,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  mockGetAgentState.mockReturnValue(null);
-  mockGetAgentConfig.mockReturnValue(null);
   mockExistsSync.mockReset();
   mockReadFileSync.mockReset();
   mockReadFile.mockReset();
@@ -353,274 +344,6 @@ describe("Server startup", () => {
     expect(capturedHandler).toBeDefined();
   });
 });
-
-// ---------------------------------------------------------------------------
-// readLogFeed (tested indirectly via GET /api/state)
-// ---------------------------------------------------------------------------
-
-describe("readLogFeed (via /api/state)", () => {
-  it("returns empty feed when log file does not exist", async () => {
-    mockExistsSync.mockReturnValue(false);
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    expect(data.feed).toEqual([]);
-  });
-
-  it("returns parsed log entries when file exists", async () => {
-    const entry1 = {
-      timestamp: "2026-03-14T00:00:00Z",
-      sequence: 0,
-      action: "agent_start",
-    };
-    const entry2 = {
-      timestamp: "2026-03-14T00:01:00Z",
-      sequence: 1,
-      action: "cycle_complete",
-    };
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify(entry1) + "\n" + JSON.stringify(entry2) + "\n",
-    );
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    const feed = data.feed as Record<string, unknown>[];
-    expect(feed).toHaveLength(2);
-    expect(feed[0].action).toBe("agent_start");
-    expect(feed[1].action).toBe("cycle_complete");
-  });
-
-  it("skips malformed JSON lines and keeps valid entries", async () => {
-    const valid1 = { timestamp: "2026-03-14T00:00:00Z", sequence: 0, action: "agent_start" };
-    const valid2 = { timestamp: "2026-03-14T00:01:00Z", sequence: 2, action: "cycle_complete" };
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify(valid1) + "\nNOT_JSON\n" + JSON.stringify(valid2) + "\n",
-    );
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    const feed = data.feed as Record<string, unknown>[];
-    expect(feed).toHaveLength(2);
-    expect(feed[0].action).toBe("agent_start");
-    expect(feed[1].action).toBe("cycle_complete");
-  });
-
-  it("skips entries that fail Zod schema validation", async () => {
-    const invalid = { action: "bad_entry" };
-    const valid = { timestamp: "2026-03-14T00:00:00Z", sequence: 0, action: "agent_start" };
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue(
-      JSON.stringify(invalid) + "\n" + JSON.stringify(valid) + "\n",
-    );
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    const feed = data.feed as Record<string, unknown>[];
-    expect(feed).toHaveLength(1);
-    expect(feed[0].action).toBe("agent_start");
-  });
-
-  it("handles readFileSync throwing an error", async () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockImplementation(() => {
-      throw new Error("EACCES: permission denied");
-    });
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    expect(data.feed).toEqual([]);
-  });
-
-  it("handles empty log file", async () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue("");
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    expect(data.feed).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// handleState (GET /api/state)
-// ---------------------------------------------------------------------------
-
-describe("handleState (GET /api/state)", () => {
-  it("returns default state when no agent running", async () => {
-    mockExistsSync.mockReturnValue(false);
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(200);
-    const data = res.parsedBody();
-    expect(data.cycle).toBe(0);
-    expect(data.running).toBe(false);
-    expect(data.ethPrice).toBe(0);
-    expect(data.drift).toBe(0);
-    expect(data.trades).toBe(0);
-    expect(data.totalSpent).toBe(0);
-    expect(data.budgetTier).toBe("normal");
-    expect(data.allocation).toEqual({});
-    expect(data.target).toEqual({});
-    expect(data.totalValue).toBe(0);
-    expect(data.transactions).toEqual([]);
-    expect(data.audit).toBeNull();
-  });
-
-  it("returns correct state when agent is running", async () => {
-    mockExistsSync.mockReturnValue(false);
-    const fakeState = {
-      cycle: 5,
-      running: true,
-      ethPrice: 2500,
-      drift: 0.08,
-      tradesExecuted: 3,
-      totalSpentUsd: 150,
-      budgetTier: "conservation",
-      allocation: { ETH: 0.65, USDC: 0.35 },
-      totalValue: 1200,
-      transactions: [
-        {
-          txHash: "0xabc123",
-          sellToken: "USDC",
-          buyToken: "ETH",
-          sellAmount: "50",
-          status: "success",
-          timestamp: "2026-03-14T01:00:00Z",
-        },
-      ],
-      audit: {
-        allows: ["Swap ETH <-> USDC on Uniswap"],
-        prevents: ["Withdrawals to external addresses"],
-        worstCase: "Loss of $200 daily budget",
-        warnings: ["High slippage tolerance"],
-        formatted: "...",
-      },
-    };
-
-    const fakeConfig = {
-      intent: {
-        targetAllocation: { ETH: 0.6, USDC: 0.4 },
-        dailyBudgetUsd: 200,
-        timeWindowDays: 7,
-        driftThreshold: 0.05,
-        maxSlippage: 0.01,
-        maxTradesPerDay: 5,
-      },
-      delegatorKey: "0xaaa",
-      agentKey: "0xbbb",
-      chainId: 11155111,
-      intervalMs: 60000,
-    };
-
-    mockGetAgentState.mockReturnValue(fakeState);
-    mockGetAgentConfig.mockReturnValue(fakeConfig);
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(200);
-    const data = res.parsedBody();
-    expect(data.cycle).toBe(5);
-    expect(data.running).toBe(true);
-    expect(data.ethPrice).toBe(2500);
-    expect(data.drift).toBe(0.08);
-    expect(data.trades).toBe(3);
-    expect(data.totalSpent).toBe(150);
-    expect(data.budgetTier).toBe("conservation");
-    expect(data.allocation).toEqual({ ETH: 0.65, USDC: 0.35 });
-    expect(data.target).toEqual({ ETH: 0.6, USDC: 0.4 });
-    expect(data.totalValue).toBe(1200);
-    const transactions = data.transactions as Record<string, unknown>[];
-    expect(transactions).toHaveLength(1);
-    expect(transactions[0].txHash).toBe("0xabc123");
-    const audit = data.audit as Record<string, unknown>;
-    expect(audit.allows).toEqual(["Swap ETH <-> USDC on Uniswap"]);
-    expect(audit.prevents).toEqual(["Withdrawals to external addresses"]);
-    expect(audit.worstCase).toBe("Loss of $200 daily budget");
-    expect(audit.warnings).toEqual(["High slippage tolerance"]);
-    expect(audit.formatted).toBeUndefined();
-  });
-
-  it("returns null audit when state has no audit", async () => {
-    mockExistsSync.mockReturnValue(false);
-    mockGetAgentState.mockReturnValue({
-      cycle: 1,
-      running: true,
-      ethPrice: 2000,
-      drift: 0.01,
-      tradesExecuted: 0,
-      totalSpentUsd: 0,
-      budgetTier: "normal",
-      allocation: { ETH: 0.6, USDC: 0.4 },
-      totalValue: 500,
-      transactions: [],
-      audit: null,
-    });
-    mockGetAgentConfig.mockReturnValue({
-      intent: { targetAllocation: { ETH: 0.6, USDC: 0.4 } },
-    });
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    expect(data.audit).toBeNull();
-  });
-
-  it("returns getAgentState null and getAgentConfig non-null as default state", async () => {
-    mockExistsSync.mockReturnValue(false);
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue({ intent: {} });
-
-    const req = createMockReq("GET", "/api/state");
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    const data = res.parsedBody();
-    expect(data.running).toBe(false);
-    expect(data.cycle).toBe(0);
-  });
-});
-
 
 // ---------------------------------------------------------------------------
 // parseBody (tested indirectly via POST /api/parse-intent with invalid JSON)
@@ -699,7 +422,7 @@ describe("handleDashboard (GET /)", () => {
     });
     const html = vi.mocked(res.end).mock.calls[0]?.[0] as string;
     expect(html).toContain("VEIL");
-    expect(html).toContain("/api/state");
+    expect(html).toContain("/api/intents");
   });
 
   it("serves dashboard on /dashboard path", async () => {
@@ -743,7 +466,7 @@ describe("handleDashboard (GET /)", () => {
 
 describe("CORS headers", () => {
   it("OPTIONS request returns 204 with CORS headers", async () => {
-    const req = createMockReq("OPTIONS", "/api/state");
+    const req = createMockReq("OPTIONS", "/api/parse-intent");
     const res = createMockRes();
     await callHandler(req, res);
 
@@ -763,11 +486,7 @@ describe("CORS headers", () => {
   });
 
   it("JSON responses include CORS headers", async () => {
-    mockExistsSync.mockReturnValue(false);
-    mockGetAgentState.mockReturnValue(null);
-    mockGetAgentConfig.mockReturnValue(null);
-
-    const req = createMockReq("GET", "/api/state");
+    const req = createMockReq("GET", "/api/auth/nonce?wallet=0x1234");
     const res = createMockRes();
     await callHandler(req, res);
 

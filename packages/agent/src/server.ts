@@ -1,11 +1,11 @@
 /**
- * HTTP server (port 3147) exposing wallet-scoped intent API and legacy endpoints.
+ * HTTP server (port 3147) exposing wallet-scoped intent API.
  * Serves the Next.js dashboard static build as a SPA fallback.
  *
  * @module @veil/agent/server
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
-import { readFileSync, readFile, existsSync, createReadStream } from "fs";
+import { readFile, existsSync, createReadStream } from "fs";
 import { join, extname } from "path";
 import { privateKeyToAccount } from "viem/accounts";
 import { recoverMessageAddress } from "viem";
@@ -13,15 +13,11 @@ import { nanoid } from "nanoid";
 
 import { env } from "./config.js";
 import { compileIntent } from "./delegation/compiler.js";
-import { getAgentState, getAgentConfig } from "./agent-loop.js";
 import { registerAgent } from "./identity/erc8004.js";
 import {
   DEFAULT_AGENT_PORT,
   API_PATHS,
-  AgentLogEntrySchema,
   ParsedIntentSchema,
-  type AgentLogEntry,
-  type AgentStateResponse,
   computeExpiryTimestamp,
   generateAuditReport,
 } from "@veil/common";
@@ -42,7 +38,6 @@ import { resumeActiveIntents } from "./startup.js";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : DEFAULT_AGENT_PORT;
 const DASHBOARD_DIST = join(process.cwd(), "apps", "dashboard", "out");
-const LOG_PATH = join(process.cwd(), "agent_log.jsonl");
 
 // Singleton instances — initialized at startup
 let repo: IntentRepository;
@@ -58,31 +53,6 @@ const MIME_TYPES: Record<string, string> = {
   ".woff": "font/woff",
   ".woff2": "font/woff2",
 };
-
-// ---------------------------------------------------------------------------
-// Read agent_log.jsonl feed (legacy)
-// ---------------------------------------------------------------------------
-
-function readLogFeed(): AgentLogEntry[] {
-  if (!existsSync(LOG_PATH)) return [];
-  try {
-    const raw = readFileSync(LOG_PATH, "utf-8");
-    return raw
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .flatMap((line) => {
-        try {
-          const parsed = AgentLogEntrySchema.safeParse(JSON.parse(line));
-          return parsed.success ? [parsed.data] : [];
-        } catch {
-          return [];
-        }
-      });
-  } catch {
-    return [];
-  }
-}
 
 // ---------------------------------------------------------------------------
 // JSON body parser
@@ -171,62 +141,7 @@ function matchIntentRoute(
 }
 
 // ---------------------------------------------------------------------------
-// Legacy route handlers
-// ---------------------------------------------------------------------------
-
-function handleState(_req: IncomingMessage, res: ServerResponse) {
-  const state = getAgentState();
-  const config = getAgentConfig();
-
-  if (!state || !config) {
-    const defaultState: AgentStateResponse = {
-      cycle: 0,
-      running: false,
-      ethPrice: 0,
-      drift: 0,
-      trades: 0,
-      totalSpent: 0,
-      budgetTier: "normal",
-      allocation: {},
-      target: {},
-      totalValue: 0,
-      feed: readLogFeed(),
-      transactions: [],
-      audit: null,
-      deployError: null,
-    };
-    sendJson(res, defaultState);
-    return;
-  }
-
-  const response: AgentStateResponse = {
-    cycle: state.cycle,
-    running: state.running,
-    ethPrice: state.ethPrice,
-    drift: state.drift,
-    trades: state.tradesExecuted,
-    totalSpent: state.totalSpentUsd,
-    budgetTier: state.budgetTier,
-    allocation: state.allocation,
-    target: config.intent.targetAllocation,
-    totalValue: state.totalValue,
-    feed: readLogFeed(),
-    transactions: state.transactions,
-    audit: state.audit
-      ? {
-          allows: state.audit.allows,
-          prevents: state.audit.prevents,
-          worstCase: state.audit.worstCase,
-          warnings: state.audit.warnings,
-        }
-      : null,
-    deployError: state.deployError ?? null,
-  };
-  sendJson(res, response);
-}
-
-// ---------------------------------------------------------------------------
-// New API route handlers
+// API route handlers
 // ---------------------------------------------------------------------------
 
 function handleAuthNonce(
@@ -566,7 +481,6 @@ function handleDashboard(req: IncomingMessage, res: ServerResponse) {
 <p>Agent API is running. Dashboard not built yet.</p>
 <p>API endpoints:</p>
 <ul>
-<li><a href="/api/state" style="color:#00ff9d">/api/state</a> — agent status (legacy)</li>
 <li>GET /api/auth/nonce?wallet= — request auth nonce</li>
 <li>POST /api/auth/verify — verify wallet signature</li>
 <li>POST /api/parse-intent — parse intent text</li>
@@ -600,12 +514,6 @@ const server = createServer(async (req, res) => {
   const { pathname, search } = parseUrl(rawUrl);
 
   try {
-    // Legacy routes
-    if (pathname === API_PATHS.state && method === "GET") {
-      handleState(req, res);
-      return;
-    }
-
     // Auth routes
     if (pathname === API_PATHS.authNonce && method === "GET") {
       handleAuthNonce(req, res, search);
@@ -678,7 +586,7 @@ async function startup() {
   logger.info("=".repeat(60));
   logger.info(`  Agent address:  ${agentAccount.address}`);
   logger.info(`  Dashboard:      http://localhost:${PORT}`);
-  logger.info(`  API:            http://localhost:${PORT}/api/state`);
+  logger.info(`  API:            http://localhost:${PORT}/api/intents`);
   logger.info("=".repeat(60));
 
   server.listen(PORT, () => {
