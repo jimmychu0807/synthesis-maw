@@ -40,9 +40,6 @@ vi.mock("viem/accounts", () => ({
   privateKeyToAccount: vi.fn().mockReturnValue({
     address: "0xABCDEF1234567890ABCDEF1234567890ABCDEF12",
   }),
-  generatePrivateKey: vi.fn().mockReturnValue(
-    "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  ),
 }));
 
 // Mock viem
@@ -192,15 +189,11 @@ vi.mock("@veil/common", async () => {
     DEFAULT_AGENT_PORT: 3147,
     API_PATHS: {
       state: "/api/state",
-      deploy: "/api/deploy",
       authNonce: "/api/auth/nonce",
       authVerify: "/api/auth/verify",
       parseIntent: "/api/parse-intent",
       intents: "/api/intents",
     },
-    DeployRequestSchema: z.object({
-      intent: z.string().min(1, "Intent cannot be empty"),
-    }),
     AgentLogEntrySchema: z.object({
       timestamp: z.string(),
       sequence: z.number(),
@@ -233,11 +226,9 @@ vi.mock("@veil/common", async () => {
 // Mock agent-loop with controllable getAgentState / getAgentConfig
 const mockGetAgentState = vi.fn().mockReturnValue(null);
 const mockGetAgentConfig = vi.fn().mockReturnValue(null);
-const mockRunAgentLoop = vi.fn().mockResolvedValue(undefined);
 vi.mock("../agent-loop.js", () => ({
   getAgentState: (...args: unknown[]) => mockGetAgentState(...args),
   getAgentConfig: (...args: unknown[]) => mockGetAgentConfig(...args),
-  runAgentLoop: (...args: unknown[]) => mockRunAgentLoop(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -344,7 +335,6 @@ afterEach(() => {
   mockExistsSync.mockReset();
   mockReadFileSync.mockReset();
   mockReadFile.mockReset();
-  mockRunAgentLoop.mockReset().mockResolvedValue(undefined);
 });
 
 // Trigger the import so capturedHandler gets set
@@ -631,235 +621,16 @@ describe("handleState (GET /api/state)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// handleDeploy (POST /api/deploy)
-// ---------------------------------------------------------------------------
-
-describe("handleDeploy (POST /api/deploy)", () => {
-  it("returns 400 when intent is missing", async () => {
-    const req = createMockReq("POST", "/api/deploy", {});
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(400);
-    const data = res.parsedBody();
-    expect(data.error).toBeDefined();
-    expect(typeof data.error).toBe("string");
-  });
-
-  it("returns 400 when intent is empty string", async () => {
-    const req = createMockReq("POST", "/api/deploy", { intent: "" });
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(400);
-    const data = res.parsedBody();
-    expect(data.error).toBe("Intent cannot be empty");
-  });
-
-  it("returns 400 when intent is non-string type", async () => {
-    const req = createMockReq("POST", "/api/deploy", { intent: 42 });
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(400);
-    const data = res.parsedBody();
-    expect(data.error).toBeDefined();
-    expect(typeof data.error).toBe("string");
-  });
-
-  it("returns 409 when agent is already running", async () => {
-    mockGetAgentState.mockReturnValue({ running: true, cycle: 3 });
-
-    const req = createMockReq("POST", "/api/deploy", {
-      intent: "60/40 ETH/USDC",
-    });
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(409);
-    const data = res.parsedBody();
-    expect(data.error).toBe("Agent already running");
-  });
-
-  it("does not return 409 when agent exists but is not running", async () => {
-    mockGetAgentState.mockReturnValue({ running: false, cycle: 5 });
-
-    const { compileIntent } = await import("../delegation/compiler.js");
-    const mockCompile = compileIntent as ReturnType<typeof vi.fn>;
-    mockCompile.mockResolvedValue({
-      targetAllocation: { ETH: 0.6, USDC: 0.4 },
-      dailyBudgetUsd: 200,
-      timeWindowDays: 7,
-      driftThreshold: 0.05,
-      maxSlippage: 0.01,
-      maxTradesPerDay: 5,
-    });
-
-    mockGetAgentState
-      .mockReturnValueOnce({ running: false, cycle: 5 })
-      .mockReturnValue({ running: true, cycle: 0, audit: null, deployError: null });
-
-    const req = createMockReq("POST", "/api/deploy", {
-      intent: "60/40 ETH/USDC",
-    });
-    const res = createMockRes();
-
-    vi.useFakeTimers();
-    const promise = callHandler(req, res);
-    await vi.advanceTimersByTimeAsync(11_000);
-    await promise;
-    vi.useRealTimers();
-
-    expect(res.statusCode).toBe(200);
-  });
-
-  it("returns 500 when compileIntent throws", async () => {
-    mockGetAgentState.mockReturnValue(null);
-
-    const { compileIntent } = await import("../delegation/compiler.js");
-    const mockCompile = compileIntent as ReturnType<typeof vi.fn>;
-    mockCompile.mockRejectedValue(new Error("Venice API timeout"));
-
-    const req = createMockReq("POST", "/api/deploy", {
-      intent: "60/40 ETH/USDC",
-    });
-    const res = createMockRes();
-    await callHandler(req, res);
-
-    expect(res.statusCode).toBe(500);
-    const data = res.parsedBody();
-    expect(data.error).toBe("Venice API timeout");
-  });
-
-  it("calls compileIntent and runAgentLoop on valid deploy", async () => {
-    mockGetAgentState.mockReturnValue(null);
-
-    const { compileIntent } = await import("../delegation/compiler.js");
-    const mockCompile = compileIntent as ReturnType<typeof vi.fn>;
-    const parsedIntent = {
-      targetAllocation: { ETH: 0.6, USDC: 0.4 },
-      dailyBudgetUsd: 200,
-      timeWindowDays: 7,
-      driftThreshold: 0.05,
-      maxSlippage: 0.01,
-      maxTradesPerDay: 5,
-    };
-    mockCompile.mockResolvedValue(parsedIntent);
-
-    mockGetAgentState
-      .mockReturnValueOnce(null)
-      .mockReturnValue({
-        running: true,
-        audit: {
-          allows: ["Swap ETH/USDC"],
-          prevents: ["External transfers"],
-          worstCase: "$200 max loss",
-          warnings: [],
-          formatted: "...",
-        },
-        deployError: null,
-      });
-
-    const req = createMockReq("POST", "/api/deploy", {
-      intent: "60/40 ETH/USDC, $200/day",
-    });
-    const res = createMockRes();
-
-    vi.useFakeTimers();
-    const promise = callHandler(req, res);
-    await vi.advanceTimersByTimeAsync(300);
-    await promise;
-    vi.useRealTimers();
-
-    expect(mockCompile).toHaveBeenCalledWith("60/40 ETH/USDC, $200/day");
-    expect(mockRunAgentLoop).toHaveBeenCalled();
-
-    const data = res.parsedBody();
-    expect(data.parsed).toEqual(parsedIntent);
-    const audit = data.audit as Record<string, unknown>;
-    expect(audit.allows).toEqual(["Swap ETH/USDC"]);
-    expect(audit.prevents).toEqual(["External transfers"]);
-    expect(audit.worstCase).toBe("$200 max loss");
-    expect(audit.formatted).toBeUndefined();
-  });
-
-  it("returns parsed intent with null audit when state has no audit after deploy", async () => {
-    mockGetAgentState.mockReturnValue(null);
-
-    const { compileIntent } = await import("../delegation/compiler.js");
-    const mockCompile = compileIntent as ReturnType<typeof vi.fn>;
-    mockCompile.mockResolvedValue({
-      targetAllocation: { ETH: 0.5, USDC: 0.5 },
-    });
-
-    mockGetAgentState
-      .mockReturnValueOnce(null)
-      .mockReturnValue({ running: true, audit: null, deployError: null });
-
-    const req = createMockReq("POST", "/api/deploy", {
-      intent: "50/50 split",
-    });
-    const res = createMockRes();
-
-    vi.useFakeTimers();
-    const promise = callHandler(req, res);
-    await vi.advanceTimersByTimeAsync(11_000);
-    await promise;
-    vi.useRealTimers();
-
-    const data = res.parsedBody();
-    expect(data.audit).toBeNull();
-  });
-
-  it("returns 500 when deployError is set during polling", async () => {
-    mockGetAgentState.mockReturnValue(null);
-
-    const { compileIntent } = await import("../delegation/compiler.js");
-    const mockCompile = compileIntent as ReturnType<typeof vi.fn>;
-    mockCompile.mockResolvedValue({
-      targetAllocation: { ETH: 0.6, USDC: 0.4 },
-      dailyBudgetUsd: 200,
-      timeWindowDays: 7,
-      driftThreshold: 0.05,
-      maxSlippage: 0.01,
-      maxTradesPerDay: 5,
-    });
-
-    mockGetAgentState
-      .mockReturnValueOnce(null)
-      .mockReturnValue({
-        running: false,
-        audit: null,
-        deployError: "MetaMask SDK timeout",
-      });
-
-    const req = createMockReq("POST", "/api/deploy", {
-      intent: "60/40 ETH/USDC",
-    });
-    const res = createMockRes();
-
-    vi.useFakeTimers();
-    const promise = callHandler(req, res);
-    await vi.advanceTimersByTimeAsync(300);
-    await promise;
-    vi.useRealTimers();
-
-    expect(res.statusCode).toBe(500);
-    const data = res.parsedBody();
-    expect(data.error).toBe("MetaMask SDK timeout");
-  });
-});
 
 // ---------------------------------------------------------------------------
-// parseBody (tested indirectly via POST /api/deploy with invalid JSON)
+// parseBody (tested indirectly via POST /api/parse-intent with invalid JSON)
 // ---------------------------------------------------------------------------
 
-describe("parseBody (via POST /api/deploy)", () => {
+describe("parseBody (via POST /api/parse-intent)", () => {
   it("returns 500 when body is invalid JSON", async () => {
     const req = new EventEmitter() as IncomingMessage;
     req.method = "POST";
-    req.url = "/api/deploy";
+    req.url = "/api/parse-intent";
     req.headers = {};
 
     process.nextTick(() => {
@@ -878,7 +649,7 @@ describe("parseBody (via POST /api/deploy)", () => {
   it("handles empty body as invalid JSON", async () => {
     const req = new EventEmitter() as IncomingMessage;
     req.method = "POST";
-    req.url = "/api/deploy";
+    req.url = "/api/parse-intent";
     req.headers = {};
 
     process.nextTick(() => {
@@ -1006,8 +777,8 @@ describe("CORS headers", () => {
     );
   });
 
-  it("OPTIONS on /api/deploy also returns CORS headers", async () => {
-    const req = createMockReq("OPTIONS", "/api/deploy");
+  it("OPTIONS on /api/parse-intent also returns CORS headers", async () => {
+    const req = createMockReq("OPTIONS", "/api/parse-intent");
     const res = createMockRes();
     await callHandler(req, res);
 

@@ -7,23 +7,21 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { readFileSync, readFile, existsSync, createReadStream } from "fs";
 import { join, extname } from "path";
-import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
+import { privateKeyToAccount } from "viem/accounts";
 import { recoverMessageAddress } from "viem";
 import { nanoid } from "nanoid";
 
 import { env } from "./config.js";
 import { compileIntent } from "./delegation/compiler.js";
-import { getAgentState, getAgentConfig, runAgentLoop } from "./agent-loop.js";
+import { getAgentState, getAgentConfig } from "./agent-loop.js";
 import { registerAgent } from "./identity/erc8004.js";
 import {
   DEFAULT_AGENT_PORT,
   API_PATHS,
-  DeployRequestSchema,
   AgentLogEntrySchema,
   ParsedIntentSchema,
   type AgentLogEntry,
   type AgentStateResponse,
-  type DeployResponse,
   computeExpiryTimestamp,
   generateAuditReport,
 } from "@veil/common";
@@ -175,76 +173,6 @@ function matchIntentRoute(
 // ---------------------------------------------------------------------------
 // Legacy route handlers
 // ---------------------------------------------------------------------------
-
-async function handleDeploy(req: IncomingMessage, res: ServerResponse) {
-  const body = await parseBody(req);
-  const validated = DeployRequestSchema.safeParse(body);
-  if (!validated.success) {
-    sendError(
-      res,
-      validated.error.issues[0]?.message ?? "Invalid request",
-    );
-    return;
-  }
-  const intentText = validated.data.intent;
-
-  const existing = getAgentState();
-  if (existing?.running) {
-    sendError(res, "Agent already running", 409);
-    return;
-  }
-
-  try {
-    logger.info(`[server] Parsing intent: "${intentText}"`);
-    const parsed = await compileIntent(intentText);
-
-    const delegatorKey = env.DELEGATOR_PRIVATE_KEY ?? generatePrivateKey();
-
-    runAgentLoop({
-      intent: parsed,
-      delegatorKey,
-      agentKey: env.AGENT_PRIVATE_KEY,
-      chainId: 11155111,
-      intervalMs: 60_000,
-    }).catch((err) => {
-      logger.error({ err }, "[server] Agent loop crashed");
-    });
-
-    const POLL_INTERVAL_MS = 200;
-    const POLL_TIMEOUT_MS = 10_000;
-    const pollStart = Date.now();
-
-    while (Date.now() - pollStart < POLL_TIMEOUT_MS) {
-      const s = getAgentState();
-      if (s?.audit || s?.deployError) break;
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    }
-
-    const state = getAgentState();
-
-    if (state?.deployError) {
-      sendError(res, state.deployError, 500);
-      return;
-    }
-
-    const deployResponse: DeployResponse = {
-      parsed,
-      audit: state?.audit
-        ? {
-            allows: state.audit.allows,
-            prevents: state.audit.prevents,
-            worstCase: state.audit.worstCase,
-            warnings: state.audit.warnings,
-          }
-        : null,
-    };
-    sendJson(res, deployResponse);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error({ err }, "Deploy failed");
-    sendError(res, msg, 500);
-  }
-}
 
 function handleState(_req: IncomingMessage, res: ServerResponse) {
   const state = getAgentState();
@@ -639,7 +567,6 @@ function handleDashboard(req: IncomingMessage, res: ServerResponse) {
 <p>API endpoints:</p>
 <ul>
 <li><a href="/api/state" style="color:#00ff9d">/api/state</a> — agent status (legacy)</li>
-<li>POST /api/deploy — deploy agent with intent (legacy)</li>
 <li>GET /api/auth/nonce?wallet= — request auth nonce</li>
 <li>POST /api/auth/verify — verify wallet signature</li>
 <li>POST /api/parse-intent — parse intent text</li>
@@ -674,10 +601,6 @@ const server = createServer(async (req, res) => {
 
   try {
     // Legacy routes
-    if (pathname === API_PATHS.deploy && method === "POST") {
-      await handleDeploy(req, res);
-      return;
-    }
     if (pathname === API_PATHS.state && method === "GET") {
       handleState(req, res);
       return;

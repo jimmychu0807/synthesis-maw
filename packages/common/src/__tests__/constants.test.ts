@@ -23,8 +23,11 @@ describe("API_PATHS", () => {
     expect(API_PATHS.state).toBe("/api/state");
   });
 
-  it("has a deploy path", () => {
-    expect(API_PATHS.deploy).toBe("/api/deploy");
+  it("has auth and intent paths", () => {
+    expect(API_PATHS.authNonce).toBe("/api/auth/nonce");
+    expect(API_PATHS.authVerify).toBe("/api/auth/verify");
+    expect(API_PATHS.parseIntent).toBe("/api/parse-intent");
+    expect(API_PATHS.intents).toBe("/api/intents");
   });
 
   it("is a frozen object (immutable)", () => {

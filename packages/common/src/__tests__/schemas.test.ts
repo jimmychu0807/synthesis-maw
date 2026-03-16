@@ -1,6 +1,6 @@
 /**
  * @file Tests for Zod schemas — ParsedIntent, SwapRecord, AuditReport,
- * AgentLogEntry, AgentStateResponse, DeployResponse.
+ * AgentLogEntry, AgentStateResponse.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -9,14 +9,11 @@ import {
   AuditReportSchema,
   AgentLogEntrySchema,
   AgentStateResponseSchema,
-  DeployResponseSchema,
-  DeployRequestSchema,
   type ParsedIntent,
   type SwapRecord,
   type AuditReport,
   type AgentLogEntry,
   type AgentStateResponse,
-  type DeployResponse,
 } from "../schemas.js";
 
 // ---------------------------------------------------------------------------
@@ -296,78 +293,3 @@ describe("AgentStateResponseSchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// DeployResponseSchema
-// ---------------------------------------------------------------------------
-
-describe("DeployResponseSchema", () => {
-  const valid: DeployResponse = {
-    parsed: {
-      targetAllocation: { ETH: 0.6, USDC: 0.4 },
-      dailyBudgetUsd: 200,
-      timeWindowDays: 7,
-      maxTradesPerDay: 5,
-      maxSlippage: 0.005,
-      driftThreshold: 0.05,
-    },
-    audit: {
-      allows: ["Swap"],
-      prevents: ["Withdraw"],
-      worstCase: "Loss",
-      warnings: [],
-    },
-  };
-
-  it("accepts a valid deploy response", () => {
-    const result = DeployResponseSchema.safeParse(valid);
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts null audit", () => {
-    const result = DeployResponseSchema.safeParse({
-      ...valid,
-      audit: null,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects missing parsed", () => {
-    const { parsed: _, ...rest } = valid;
-    const result = DeployResponseSchema.safeParse(rest);
-    expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// DeployRequestSchema
-// ---------------------------------------------------------------------------
-
-describe("DeployRequestSchema", () => {
-  it("accepts valid deploy request", () => {
-    const result = DeployRequestSchema.safeParse({ intent: "60/40 ETH/USDC" });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects missing intent", () => {
-    const result = DeployRequestSchema.safeParse({});
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects empty intent", () => {
-    const result = DeployRequestSchema.safeParse({ intent: "" });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects non-string intent", () => {
-    const result = DeployRequestSchema.safeParse({ intent: 123 });
-    expect(result.success).toBe(false);
-  });
-
-  it("returns parsed data with intent field", () => {
-    const result = DeployRequestSchema.safeParse({ intent: "80/20 ETH/USDC, $100/day" });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.intent).toBe("80/20 ETH/USDC, $100/day");
-    }
-  });
-});

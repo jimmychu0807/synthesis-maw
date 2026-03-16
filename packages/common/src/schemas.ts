@@ -94,23 +94,3 @@ export const AgentStateResponseSchema = z.object({
 
 export type AgentStateResponse = z.infer<typeof AgentStateResponseSchema>;
 
-// ---------------------------------------------------------------------------
-// DeployResponse — the /api/deploy response shape
-// ---------------------------------------------------------------------------
-
-export const DeployResponseSchema = z.object({
-  parsed: ParsedIntentSchema,
-  audit: AuditReportSchema.nullable(),
-});
-
-export type DeployResponse = z.infer<typeof DeployResponseSchema>;
-
-// ---------------------------------------------------------------------------
-// DeployRequest — the /api/deploy request body
-// ---------------------------------------------------------------------------
-
-export const DeployRequestSchema = z.object({
-  intent: z.string().min(1, "Intent cannot be empty"),
-});
-
-export type DeployRequest = z.infer<typeof DeployRequestSchema>;

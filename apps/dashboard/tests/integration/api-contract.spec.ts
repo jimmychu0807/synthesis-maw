@@ -103,21 +103,13 @@ test.describe("API Contract: /api/state", () => {
   });
 });
 
-test.describe("API Contract: /api/deploy", () => {
-  test("400 on missing intent", async ({ request }) => {
-    const response = await request.post("/api/deploy", {
+test.describe("API Contract: /api/parse-intent", () => {
+  test("400 on missing intent text", async ({ request }) => {
+    const response = await request.post("/api/parse-intent", {
       data: {},
     });
-    // Agent server returns 400 for missing intent
     expect(response.status()).toBe(400);
     const data = await response.json();
     expect(data).toHaveProperty("error");
-  });
-
-  test("400 on empty intent", async ({ request }) => {
-    const response = await request.post("/api/deploy", {
-      data: { intent: "" },
-    });
-    expect(response.status()).toBe(400);
   });
 });

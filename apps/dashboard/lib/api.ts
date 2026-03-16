@@ -1,28 +1,9 @@
 /**
- * Client-side fetch wrappers for /api/state and /api/deploy endpoints.
+ * Client-side fetch wrappers for the Veil API.
  *
  * @module @veil/dashboard/lib/api
  */
-import type { AgentStateResponse, DeployResponse, ParsedIntent, AuditReport } from "@veil/common";
-
-export async function fetchAgentState(): Promise<AgentStateResponse> {
-  const res = await fetch("/api/state");
-  if (!res.ok) throw new Error("Failed to fetch state: unable to reach the agent server");
-  return res.json();
-}
-
-export async function deployAgent(intent: string): Promise<DeployResponse> {
-  const res = await fetch("/api/deploy", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ intent }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(body.error || `Deploy failed: ${res.status}`);
-  }
-  return res.json();
-}
+import type { ParsedIntent, AuditReport } from "@veil/common";
 
 // ---------------------------------------------------------------------------
 // Auth API

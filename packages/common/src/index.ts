@@ -8,15 +8,11 @@ export {
   AuditReportSchema,
   AgentLogEntrySchema,
   AgentStateResponseSchema,
-  DeployResponseSchema,
-  DeployRequestSchema,
   type ParsedIntent,
   type SwapRecord,
   type AuditReport,
   type AgentLogEntry,
   type AgentStateResponse,
-  type DeployResponse,
-  type DeployRequest,
 } from "./schemas.js";
 
 export {
