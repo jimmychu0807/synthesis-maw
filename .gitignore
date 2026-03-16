@@ -1,7 +1,8 @@
 .env
 node_modules/
 dist/
-__generated__/
+# __generated__/ is committed — contains stable GraphQL codegen output
+# needed at build time without requiring The Graph API key
 agent_log.jsonl
 .playwright-mcp/
 *.tsbuildinfo
