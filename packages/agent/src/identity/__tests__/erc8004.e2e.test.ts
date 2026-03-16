@@ -18,7 +18,6 @@ import {
   parseAbi,
   toEventSelector,
   toHex,
-  type Address,
   type Hex,
   type Log,
 } from "viem";
@@ -239,9 +238,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     });
 
     expect(Array.isArray(clients)).toBe(true);
-    const lowered = (clients as readonly Address[]).map((a) =>
-      a.toLowerCase(),
-    );
+    const lowered = clients.map((a) => a.toLowerCase());
     expect(lowered).toContain(account.address.toLowerCase());
   });
 
