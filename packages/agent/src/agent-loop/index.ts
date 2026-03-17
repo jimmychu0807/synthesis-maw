@@ -104,7 +104,7 @@ export function calculateDrift(
 // Agent Loop
 // ---------------------------------------------------------------------------
 
-export async function runAgentLoop(config: AgentConfig): Promise<void> {
+export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
   const agentAccount = privateKeyToAccount(config.agentKey);
   const agentAddress = agentAccount.address;
   const chain = config.chainId === 8453 ? base : sepolia;
@@ -236,7 +236,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<void> {
     logger.error({ err }, "Failed to create delegation");
     state.deployError = msg;
     logStop("delegation_failed");
-    return;
+    return state;
   }
 
   // --- Step 3: Audit report ---
@@ -350,6 +350,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<void> {
 
   logStop("loop_ended");
   logger.info("=== VEIL AGENT STOPPED ===");
+  return state;
 }
 
 // ---------------------------------------------------------------------------

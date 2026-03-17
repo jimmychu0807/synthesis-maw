@@ -12,7 +12,7 @@ export const intents = sqliteTable("intents", {
   intentText: text("intent_text").notNull(),
   parsedIntent: text("parsed_intent").notNull(), // JSON blob of ParsedIntent
   status: text("status", {
-    enum: ["active", "paused", "completed", "expired", "cancelled"],
+    enum: ["active", "paused", "completed", "expired", "cancelled", "failed"],
   }).notNull(),
   createdAt: integer("created_at", { mode: "number" }).notNull(),
   expiresAt: integer("expires_at", { mode: "number" }).notNull(),

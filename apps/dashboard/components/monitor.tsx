@@ -32,6 +32,7 @@ const STATUS_BADGE: Record<string, "positive" | "danger" | "warning"> = {
   completed: "positive",
   expired: "danger",
   cancelled: "danger",
+  failed: "danger",
 };
 
 function IntentListItem({
