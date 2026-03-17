@@ -234,6 +234,37 @@ test.describe("Configure Screen", () => {
     await expect(page.getByRole("button", { name: /preview strategy/i })).toBeVisible();
   });
 
+  test("shows delegation details card after preview", async ({ page }) => {
+    await page.route("**/api/parse-intent", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_PARSE_RESPONSE),
+      }),
+    );
+
+    const textarea = page.getByPlaceholder(/60\/40/);
+    await textarea.fill("60/40 ETH/USDC, $200/day, 7 days");
+    await page.getByRole("button", { name: /preview strategy/i }).click();
+
+    await expect(page.getByText("Delegation Details")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("ERC-7715 permission scope")).toBeVisible();
+
+    // Caveat enforcers
+    await expect(page.getByText("ValueLteEnforcer")).toBeVisible();
+    await expect(page.getByText("TimestampEnforcer")).toBeVisible();
+    await expect(page.getByText("LimitedCallsEnforcer")).toBeVisible();
+
+    // Computed values: 10 trades/day * 7 days = 70 max calls
+    await expect(page.getByText("70")).toBeVisible();
+
+    // Agent address (truncated)
+    await expect(page.getByText(/0xf130...c927/i)).toBeVisible();
+
+    // MetaMask sponsor badge
+    await expect(page.getByText("Secured by MetaMask ERC-7715 / ERC-7710")).toBeVisible();
+  });
+
   test("sponsor badges shown after preview", async ({ page }) => {
     await page.route("**/api/parse-intent", (route) =>
       route.fulfill({

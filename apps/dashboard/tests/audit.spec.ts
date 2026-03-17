@@ -68,7 +68,7 @@ test.describe("Audit Report (via Configure Preview)", () => {
     await expect(page.getByText("Drift Threshold", { exact: true })).toBeVisible();
     await expect(page.getByText("5.0%")).toBeVisible();
     await expect(page.getByText("Max Trades/Day")).toBeVisible();
-    await expect(page.getByText("10")).toBeVisible();
+    await expect(page.getByText("10", { exact: true })).toBeVisible();
   });
 
   test("shows delegation report with allows section", async ({ page }) => {
@@ -114,6 +114,52 @@ test.describe("Audit Report (via Configure Preview)", () => {
   test("shows wallet connection prompt (no wallet connected)", async ({ page }) => {
     await expect(
       page.getByText("Connect your wallet to deploy the agent."),
+    ).toBeVisible();
+  });
+
+  test("shows Delegation Details card with section heading", async ({ page }) => {
+    await expect(page.getByText("Delegation Details")).toBeVisible();
+    await expect(
+      page.getByText("ERC-7715 permission scope"),
+    ).toBeVisible();
+  });
+
+  test("shows delegation constraint metadata", async ({ page }) => {
+    // Agent address (truncated)
+    await expect(page.getByText("Delegate (Agent)")).toBeVisible();
+    await expect(page.getByText(/0xf130...c927/i)).toBeVisible();
+
+    // Scope
+    await expect(page.getByText("Scope Target")).toBeVisible();
+    await expect(page.getByText("Uniswap Router")).toBeVisible();
+
+    // Function
+    await expect(page.getByText("Function")).toBeVisible();
+    await expect(page.getByText("execute()")).toBeVisible();
+  });
+
+  test("shows computed delegation values from parsed intent", async ({ page }) => {
+    // Max Calls: 10 trades/day * 7 days = 70
+    await expect(page.getByText("Max Calls")).toBeVisible();
+    await expect(page.getByText("70")).toBeVisible();
+
+    // Max Value (wei) — $200 * 7 / $500 conservative = 2.8 ETH = 2800000000000000000
+    await expect(page.getByText("Max Value (wei)")).toBeVisible();
+
+    // Expires (should be ~7 days from now)
+    await expect(page.getByText("Expires")).toBeVisible();
+  });
+
+  test("shows caveat enforcer badges", async ({ page }) => {
+    await expect(page.getByText("Caveat Enforcers")).toBeVisible();
+    await expect(page.getByText("ValueLteEnforcer")).toBeVisible();
+    await expect(page.getByText("TimestampEnforcer")).toBeVisible();
+    await expect(page.getByText("LimitedCallsEnforcer")).toBeVisible();
+  });
+
+  test("shows MetaMask ERC-7715 sponsor badge", async ({ page }) => {
+    await expect(
+      page.getByText("Secured by MetaMask ERC-7715 / ERC-7710"),
     ).toBeVisible();
   });
 });

@@ -18,6 +18,7 @@ import { Card } from "./ui/card";
 import { SectionHeading } from "./ui/section-heading";
 import { AuditListItem } from "./ui/audit-list-item";
 import { AllocationBar } from "./allocation-bar";
+import { DelegationDetails } from "./delegation-details";
 import { Spinner, WarningIcon } from "./ui/icons";
 import { SponsorBadge } from "./sponsor-badge";
 import type { ParsedIntent, AuditReport } from "@veil/common";
@@ -319,6 +320,9 @@ export function Configure({ onSuccess }: ConfigureProps) {
                 </div>
               </Card>
             )}
+
+            {/* Delegation Details */}
+            <DelegationDetails parsed={parsed} />
 
             {/* Deploy button */}
             {step === "preview" && (
