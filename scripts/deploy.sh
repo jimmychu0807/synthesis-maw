@@ -147,6 +147,11 @@ cmd_deploy() {
   log "Installing dependencies..."
   ssh_run "cd ${APP_DIR} && pnpm install --frozen-lockfile"
 
+  # Rebuild native modules (better-sqlite3 needs node-gyp compilation on Linux;
+  # pnpm's approve-builds blocks build scripts by default)
+  log "Rebuilding native modules..."
+  ssh_run "cd ${APP_DIR}/node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3 && npx --yes node-gyp rebuild --release"
+
   # Build common + agent (skip dashboard — we do a separate static export)
   log "Building common + agent..."
   ssh_run "cd ${APP_DIR} && pnpm --filter @veil/common build"
