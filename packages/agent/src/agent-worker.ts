@@ -13,7 +13,6 @@ import { IntentLogger } from "./logging/intent-log.js";
 import type { IntentRepository } from "./db/repository.js";
 import { env } from "./config.js";
 import { logger } from "./logging/logger.js";
-import { generatePrivateKey } from "viem/accounts";
 
 export interface AgentWorker {
   intentId: string;
@@ -63,6 +62,14 @@ export class DefaultAgentWorker implements AgentWorker {
       return;
     }
 
+    if (!env.DELEGATOR_PRIVATE_KEY) {
+      const msg = "DELEGATOR_PRIVATE_KEY is not set — the worker cannot create a delegation without it. Set it in .env and restart.";
+      logger.error({ intentId: this.intentId }, msg);
+      this.intentLogger.log("worker_error", { error: msg });
+      this.deps.repo.updateIntentStatus(this.intentId, "failed");
+      return;
+    }
+
     this.running = true;
     this.abortController = new AbortController();
 
@@ -82,8 +89,7 @@ export class DefaultAgentWorker implements AgentWorker {
 
     const config: AgentConfig = {
       intent: parsed,
-      // Generate a fresh delegator key if none configured (matches CLI behavior in agent-loop/index.ts)
-      delegatorKey: env.DELEGATOR_PRIVATE_KEY ?? generatePrivateKey(),
+      delegatorKey: env.DELEGATOR_PRIVATE_KEY,
       agentKey: env.AGENT_PRIVATE_KEY,
       chainId: 11155111,
       intervalMs: 60_000,
