@@ -4,7 +4,8 @@
  * @module @veil/agent/delegation/compiler.e2e.test
  */
 import { describe, it, expect } from "vitest";
-import { compileIntent, detectAdversarialIntent } from "../compiler.js";
+import { compileIntent } from "../compiler.js";
+import { detectAdversarialIntent } from "@veil/common";
 import { IntentParseSchema } from "../../venice/schemas.js";
 
 describe("compileIntent (e2e)", () => {

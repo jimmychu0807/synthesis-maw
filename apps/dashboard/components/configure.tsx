@@ -21,7 +21,7 @@ import { AllocationBar } from "./allocation-bar";
 import { StrategyDetails } from "./strategy-details";
 import { DelegationDetails } from "./delegation-details";
 import { Spinner, WarningIcon } from "./ui/icons";
-import { SponsorBadge } from "./sponsor-badge";
+import { SponsorChip } from "./sponsor-chip";
 import { AuthPrompt } from "./auth-prompt";
 import type { ParsedIntent, AuditReport } from "@veil/common";
 
@@ -224,7 +224,7 @@ export function Configure({ onSuccess }: ConfigureProps) {
               </div>
 
               <div className="mt-4 border-t border-border-subtle pt-3">
-                <SponsorBadge text="Powered by Venice" />
+                <SponsorChip sponsor="venice" text="Powered by Venice.ai" />
               </div>
             </Card>
 
@@ -292,7 +292,7 @@ export function Configure({ onSuccess }: ConfigureProps) {
                 </div>
 
                 <div className="mt-4 border-t border-border-subtle pt-3">
-                  <SponsorBadge text="Enforced by MetaMask Delegation" />
+                  <SponsorChip sponsor="metamask" text="Enforced by MetaMask Delegation" />
                 </div>
               </Card>
             )}

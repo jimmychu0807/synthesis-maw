@@ -38,6 +38,8 @@ describe("judge", () => {
     const { systemPrompt, userPrompt } = buildJudgePrompt(dims, MOCK_EVIDENCE);
 
     expect(systemPrompt).toContain("independent validator");
+    expect(systemPrompt).toContain("faithfully executed within the user's delegated constraints");
+    expect(systemPrompt).not.toContain("made good decisions");
     expect(systemPrompt).toContain("DECISION QUALITY");
     expect(systemPrompt).toContain("EXECUTION QUALITY");
     expect(systemPrompt).toContain("GOAL PROGRESS");
@@ -51,7 +53,7 @@ describe("judge", () => {
 
     expect(systemPrompt).toContain("90-100");
     expect(systemPrompt).toContain("0-29");
-    expect(systemPrompt).toContain("65-80");
+    expect(systemPrompt).toContain("70-85");
   });
 
   it("buildJudgePrompt serializes all evidence fields", () => {

@@ -3,6 +3,7 @@
  *
  * @module @veil/dashboard/lib/api
  */
+import { ParsedIntentSchema } from "@veil/common";
 import type { ParsedIntent, AuditReport, IntentRecord, AgentLogEntry } from "@veil/common";
 
 // ---------------------------------------------------------------------------
@@ -121,7 +122,9 @@ export function getIntentLogsUrl(intentId: string): string {
 
 export function safeParseParsedIntent(raw: string): ParsedIntent | null {
   try {
-    return JSON.parse(raw) as ParsedIntent;
+    const parsed = JSON.parse(raw);
+    const result = ParsedIntentSchema.safeParse(parsed);
+    return result.success ? result.data : null;
   } catch {
     return null;
   }

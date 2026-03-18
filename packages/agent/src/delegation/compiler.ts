@@ -26,60 +26,7 @@ import {
 } from "../venice/schemas.js";
 import { CONTRACTS, rpcTransport } from "../config.js";
 
-// ---------------------------------------------------------------------------
-// Safety thresholds for adversarial intent detection
-// ---------------------------------------------------------------------------
-
-const SAFETY_MAX_DAILY_BUDGET_USD = 1000;
-const SAFETY_MAX_TIME_WINDOW_DAYS = 30;
-const SAFETY_MAX_SLIPPAGE = 0.02;
 const CONSERVATIVE_ETH_PRICE_USD = 500;
-
-// ---------------------------------------------------------------------------
-// Adversarial intent detection
-// ---------------------------------------------------------------------------
-
-export interface AdversarialWarning {
-  field: string;
-  value: number;
-  threshold: number;
-  message: string;
-}
-
-export function detectAdversarialIntent(
-  intent: IntentParse,
-): AdversarialWarning[] {
-  const warnings: AdversarialWarning[] = [];
-
-  if (intent.dailyBudgetUsd > SAFETY_MAX_DAILY_BUDGET_USD) {
-    warnings.push({
-      field: "dailyBudgetUsd",
-      value: intent.dailyBudgetUsd,
-      threshold: SAFETY_MAX_DAILY_BUDGET_USD,
-      message: `Daily budget $${intent.dailyBudgetUsd} exceeds $${SAFETY_MAX_DAILY_BUDGET_USD.toLocaleString()} safety threshold`,
-    });
-  }
-
-  if (intent.timeWindowDays > SAFETY_MAX_TIME_WINDOW_DAYS) {
-    warnings.push({
-      field: "timeWindowDays",
-      value: intent.timeWindowDays,
-      threshold: SAFETY_MAX_TIME_WINDOW_DAYS,
-      message: `Time window ${intent.timeWindowDays} days exceeds ${SAFETY_MAX_TIME_WINDOW_DAYS}-day safety threshold`,
-    });
-  }
-
-  if (intent.maxSlippage > SAFETY_MAX_SLIPPAGE) {
-    warnings.push({
-      field: "maxSlippage",
-      value: intent.maxSlippage,
-      threshold: SAFETY_MAX_SLIPPAGE,
-      message: `Max slippage ${(intent.maxSlippage * 100).toFixed(1)}% exceeds ${SAFETY_MAX_SLIPPAGE * 100}% safety threshold`,
-    });
-  }
-
-  return warnings;
-}
 
 // ---------------------------------------------------------------------------
 // compileIntent — parse natural language into IntentParse via Venice LLM

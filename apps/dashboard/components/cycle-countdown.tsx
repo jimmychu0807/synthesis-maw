@@ -16,6 +16,13 @@ function computeSecondsLeft(
   return Math.ceil(nextCycleAt - Date.now() / 1000);
 }
 
+function formatCountdown(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
 export function CycleCountdown({
   lastCycleAt,
   intervalMs,
@@ -47,7 +54,7 @@ export function CycleCountdown({
 
   return (
     <span className="font-mono text-2xl tabular-nums text-text-primary">
-      {secondsLeft}s
+      {formatCountdown(secondsLeft)}
     </span>
   );
 }

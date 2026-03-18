@@ -123,7 +123,9 @@ export async function giveFeedback(
   feedbackHash: Hex = "0x0000000000000000000000000000000000000000000000000000000000000000",
 ): Promise<Hex> {
   const config = getChainConfig(target);
-  const { publicClient, walletClient, account } = getClients(target);
+  // Use judge wallet — agent wallet owns the agentId and the reputation
+  // registry rejects self-feedback ("Self-feedback not allowed").
+  const { publicClient, walletClient, account } = getJudgeClients(target);
 
   // Convert value to int128 with 2 decimals (e.g. 4.5 → 450)
   const valueDecimals = 2;

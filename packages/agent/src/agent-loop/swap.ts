@@ -19,6 +19,7 @@ import { logAction } from "../logging/agent-log.js";
 import { evaluateSwap, evaluateSwapFailure } from "../identity/judge.js";
 import type { SwapEvidenceInput, SwapFailureEvidenceInput } from "../identity/evidence.js";
 import { logger } from "../logging/logger.js";
+import { FAST_MODEL, REASONING_MODEL } from "../venice/llm.js";
 
 // ---------------------------------------------------------------------------
 // Token address resolution
@@ -52,6 +53,7 @@ export async function executeSwap(
   agentAddress: Address,
   chain: typeof sepolia | typeof base,
   ethPriceUsd: number,
+  agentReasoning: string = "",
 ): Promise<void> {
   // Safety checks
   const isStablecoin = ["USDC", "USDT", "DAI"].includes(
@@ -420,7 +422,7 @@ export async function executeSwap(
           slippage: 0,
           viaDelegation: usedDelegation,
         },
-        agentReasoning: "",
+        agentReasoning,
         marketContext: {
           ethPriceUsd: ethPriceUsd,
           poolTvlUsd: 0,
@@ -441,7 +443,8 @@ export async function executeSwap(
           },
           "Judge evaluation complete",
         );
-        const judgeResult = {
+        const judgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
+        const judgeResult: Record<string, unknown> = {
           composite: result.composite,
           scores: result.scores,
           reasonings: result.reasonings,
@@ -449,7 +452,10 @@ export async function executeSwap(
           validationRequestTxHash: result.validationRequestTxHash,
           validationResponseTxHashes: result.validationResponseTxHashes,
           feedbackTxHash: result.feedbackTxHash,
+          model: judgeModel,
+          warnings: result.warnings,
         };
+        if (result.usage) judgeResult.usage = result.usage;
         logAction("judge_completed", {
           cycle: currentCycle,
           tool: "venice-judge",
@@ -460,6 +466,20 @@ export async function executeSwap(
           tool: "venice-judge",
           result: judgeResult,
         });
+        // Surface on-chain failures as a separate visible log entry
+        if (result.warnings.length > 0) {
+          const warningMsg = `${result.warnings.length} on-chain op(s) failed: ${result.warnings.join("; ")}`;
+          logAction("judge_warning", {
+            cycle: currentCycle,
+            tool: "venice-judge",
+            error: warningMsg,
+          });
+          config.intentLogger?.log("judge_warning", {
+            cycle: currentCycle,
+            tool: "venice-judge",
+            error: warningMsg,
+          });
+        }
       } catch (judgeErr) {
         logger.warn({ err: judgeErr }, "Judge evaluation failed");
         const judgeError = judgeErr instanceof Error ? judgeErr.message : String(judgeErr);
@@ -525,7 +545,7 @@ export async function executeSwap(
           sellAmount: swap.sellAmount,
         },
         errorMessage: msg,
-        agentReasoning: "",
+        agentReasoning,
         marketContext: { ethPriceUsd },
       };
 
@@ -538,7 +558,8 @@ export async function executeSwap(
           { composite: failureResult.composite, scores: failureResult.scores },
           "Judge failure evaluation complete",
         );
-        const failureJudgeResult = {
+        const failureJudgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
+        const failureJudgeResult: Record<string, unknown> = {
           outcome: "failed" as const,
           composite: failureResult.composite,
           scores: failureResult.scores,
@@ -547,7 +568,10 @@ export async function executeSwap(
           validationRequestTxHash: failureResult.validationRequestTxHash,
           validationResponseTxHashes: failureResult.validationResponseTxHashes,
           feedbackTxHash: failureResult.feedbackTxHash,
+          model: failureJudgeModel,
+          warnings: failureResult.warnings,
         };
+        if (failureResult.usage) failureJudgeResult.usage = failureResult.usage;
         logAction("judge_completed", {
           cycle: currentCycle,
           tool: "venice-judge",
@@ -558,6 +582,19 @@ export async function executeSwap(
           tool: "venice-judge",
           result: failureJudgeResult,
         });
+        if (failureResult.warnings.length > 0) {
+          const warningMsg = `${failureResult.warnings.length} on-chain op(s) failed: ${failureResult.warnings.join("; ")}`;
+          logAction("judge_warning", {
+            cycle: currentCycle,
+            tool: "venice-judge",
+            error: warningMsg,
+          });
+          config.intentLogger?.log("judge_warning", {
+            cycle: currentCycle,
+            tool: "venice-judge",
+            error: warningMsg,
+          });
+        }
       } catch (judgeErr) {
         logger.warn({ err: judgeErr }, "Judge failure evaluation failed");
         const judgeError = judgeErr instanceof Error ? judgeErr.message : String(judgeErr);

@@ -4,7 +4,7 @@
  * @module @veil/agent/delegation/audit.e2e.test
  */
 import { describe, it, expect } from "vitest";
-import { generateAuditReport } from "../audit.js";
+import { generateDetailedAudit } from "../audit.js";
 import { createDelegationFromIntent } from "../compiler.js";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import type { IntentParse } from "../../venice/schemas.js";
@@ -35,7 +35,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, result.delegation);
+      const report = generateDetailedAudit(safeIntent, result.delegation);
 
       // All sections should be populated
       expect(report.allows).toBeDefined();
@@ -77,7 +77,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, result.delegation);
+      const report = generateDetailedAudit(safeIntent, result.delegation);
 
       // Check specific allows content
       expect(report.allows.some((a) => a.includes("$200/day"))).toBe(true);
@@ -103,7 +103,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, result.delegation);
+      const report = generateDetailedAudit(safeIntent, result.delegation);
 
       // $200/day * 7 days = $1,400 total
       expect(report.prevents.some((p) => p.includes("1,400"))).toBe(true);
@@ -126,7 +126,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, result.delegation);
+      const report = generateDetailedAudit(safeIntent, result.delegation);
 
       // Total budget = $200 * 7 = $1,400
       // Slippage loss = $1,400 * 0.005 = $7.00
@@ -148,7 +148,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, result.delegation);
+      const report = generateDetailedAudit(safeIntent, result.delegation);
 
       // A real signed delegation should have all three
       expect(report.intentMatch).toContain("Caveats present: YES");
@@ -168,7 +168,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(safeIntent, result.delegation);
+      const report = generateDetailedAudit(safeIntent, result.delegation);
 
       expect(report.warnings).toHaveLength(0);
       expect(report.formatted).not.toContain("WARNINGS");
@@ -196,7 +196,7 @@ describe("Audit report generation (e2e)", () => {
         11155111,
       );
 
-      const report = generateAuditReport(adversarialIntent, result.delegation);
+      const report = generateDetailedAudit(adversarialIntent, result.delegation);
 
       expect(report.warnings.length).toBeGreaterThanOrEqual(3);
       expect(report.warnings.some((w) => w.includes("Daily budget"))).toBe(
