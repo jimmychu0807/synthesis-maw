@@ -11,8 +11,17 @@ import { Tabs, type TabId } from "@/components/tabs";
 import { Configure } from "@/components/configure";
 import { Monitor } from "@/components/monitor";
 import { Footer } from "@/components/footer";
+
+function getInitialTab(): TabId {
+  if (typeof window === "undefined") return "configure";
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("intent") || params.get("tab") === "monitor") return "monitor";
+  if (params.get("tab") === "configure") return "configure";
+  return "configure";
+}
+
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabId>("configure");
+  const [activeTab, setActiveTab] = useState<TabId>(getInitialTab);
 
   const handleDeploySuccess = useCallback(
     () => setActiveTab("monitor"),

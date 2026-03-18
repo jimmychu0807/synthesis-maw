@@ -180,7 +180,11 @@ function IntentDetailView({
     // ignore
   }
 
-  const isActive = data.status === "active";
+  // Derive active state from both DB status and live worker status.
+  // If the worker has stopped but DB hasn't caught up yet, treat as inactive.
+  const workerRunning = data.workerStatus === "running" || data.workerStatus === "queued";
+  const isActive = data.status === "active" && workerRunning;
+  const dbStatusActive = data.status === "active";
 
   return (
     <div className="space-y-6 p-6">
@@ -203,10 +207,10 @@ function IntentDetailView({
           >
             {downloadingLogs ? "Downloading..." : "Download Logs"}
           </button>
-          {isActive && (
+          {dbStatusActive && (
             <button
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleting || !workerRunning}
               className="rounded-md border border-accent-danger/30 px-3 py-1.5 text-xs font-medium text-accent-danger transition-colors hover:bg-accent-danger/10 cursor-pointer disabled:opacity-50"
             >
               {deleting ? "Stopping..." : "Stop Agent"}
@@ -324,11 +328,16 @@ function IntentDetailView({
   );
 }
 
+function getInitialIntentId(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("intent");
+}
+
 export function Monitor({ onNavigateConfigure }: MonitorProps) {
   const { isConnected, address } = useAccount();
   const { token, isAuthenticated, authenticating } = useAuth();
   const { intents, error, loading, refresh } = useIntents(address, token);
-  const [selectedIntentId, setSelectedIntentId] = useState<string | null>(null);
+  const [selectedIntentId, setSelectedIntentId] = useState<string | null>(getInitialIntentId);
 
   const selectIntent = useCallback((id: string | null) => {
     if (id) {

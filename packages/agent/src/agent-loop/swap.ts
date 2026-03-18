@@ -262,6 +262,15 @@ export async function executeSwap(
           slippageTolerance: config.intent.maxSlippage * 100,
         });
         const fallbackSwap = await createSwap(fallbackQuote);
+
+        // Pre-flight simulation for fallback direct tx
+        await publicClient.estimateGas({
+          account: agentAddress,
+          to: fallbackSwap.swap.to,
+          data: fallbackSwap.swap.data,
+          value: BigInt(fallbackSwap.swap.value || "0"),
+        });
+
         txHash = await walletClient.sendTransaction({
           to: fallbackSwap.swap.to,
           data: fallbackSwap.swap.data,
@@ -271,6 +280,14 @@ export async function executeSwap(
         });
       }
     } else {
+      // Pre-flight simulation for direct tx
+      await publicClient.estimateGas({
+        account: agentAddress,
+        to: swapResponse.swap.to,
+        data: swapResponse.swap.data,
+        value: BigInt(swapResponse.swap.value || "0"),
+      });
+
       txHash = await walletClient.sendTransaction({
         to: swapResponse.swap.to,
         data: swapResponse.swap.data,
