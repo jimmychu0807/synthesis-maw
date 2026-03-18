@@ -93,8 +93,10 @@ function computeProgress(entries: AgentLogEntry[]): CycleProgress {
   const hasSwapResult = actions.has("swap_executed") || actions.has("swap_failed");
   const hasJudgeResult = actions.has("judge_completed") || actions.has("judge_failed");
   const hasQuote = actions.has("quote_received");
+  const hasSafetyBlock = actions.has("safety_block");
 
   if (hasDecision) completed++;
+  if (hasSafetyBlock) completed++;
   if (hasQuote) completed++;
   if (hasSwapResult) completed++;
   if (hasJudgeResult) completed++;
@@ -105,6 +107,7 @@ function computeProgress(entries: AgentLogEntry[]): CycleProgress {
   // Before decision: 3 market + decision + cycle_complete = 5
   //   (we don't know yet if there will be a swap)
   // After decision (hold): 3 market + decision + cycle_complete = 5
+  // After decision (rebalance, safety blocked): 3 market + decision + safety_block + complete = 6
   // After decision (rebalance): 3 market + decision + quote + swap + judge + complete = 8
   // Low-drift hold (no decision): 3 market + cycle_complete = 4
   //   (drift was below threshold, Venice wasn't even called)
@@ -115,6 +118,9 @@ function computeProgress(entries: AgentLogEntry[]): CycleProgress {
   } else if (!hasDecision) {
     // In progress, haven't reached decision yet — show base total
     total = 5;
+  } else if (willRebalance && hasSafetyBlock) {
+    // Decision was rebalance but safety block prevented the swap
+    total = 6;
   } else if (willRebalance) {
     total = 8;
   } else {
@@ -133,7 +139,7 @@ function computeProgress(entries: AgentLogEntry[]): CycleProgress {
       pendingLabel = PENDING_LABELS.pool_data_fetch;
     } else if (!hasDecision) {
       pendingLabel = PENDING_LABELS.rebalance_decision;
-    } else if (willRebalance) {
+    } else if (willRebalance && !hasSafetyBlock) {
       if (!hasQuote) {
         pendingLabel = PENDING_LABELS.quote_received;
       } else if (!hasSwapResult) {

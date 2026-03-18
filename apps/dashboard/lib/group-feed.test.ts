@@ -325,7 +325,7 @@ describe("progress tracking", () => {
 
   // ── Intermediate actions don't affect step count ────────────────────
 
-  it("ignores intermediate actions (permit2, delegation, safety_block)", () => {
+  it("ignores intermediate actions (permit2, delegation)", () => {
     const p = progress([
       { action: "price_fetch" },
       { action: "portfolio_check" },
@@ -342,6 +342,21 @@ describe("progress tracking", () => {
     // permit2_approval, delegation_caveat_enforced, judge_started are not milestones
     expect(p.completed).toBe(8);
     expect(p.total).toBe(8);
+    expect(p.pendingLabel).toBeNull();
+  });
+
+  it("shows 6/6 when rebalance decision followed by safety_block", () => {
+    const p = progress([
+      { action: "price_fetch" },
+      { action: "portfolio_check" },
+      { action: "pool_data_fetch" },
+      { action: "rebalance_decision", result: { shouldRebalance: true, reasoning: "high drift" } },
+      { action: "safety_block", result: { reason: "trade_limit_reached" } },
+      { action: "cycle_complete", result: { allocation: {}, drift: 0, totalValue: 0, ethPrice: 0 } },
+    ]);
+    // 3 market + decision + safety_block + complete = 6
+    expect(p.completed).toBe(6);
+    expect(p.total).toBe(6);
     expect(p.pendingLabel).toBeNull();
   });
 

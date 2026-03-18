@@ -335,6 +335,32 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     );
   }
 
+  // ── safety_block ────────────────────────────────────────────────────
+  // Layout: [Label] [reason badge] [amount if available] | [MetaMask]
+  if (entry.action === "safety_block" && res) {
+    const reason = r(res, "reason") as string | undefined;
+    const swapAmountUsd = r(res, "swapAmountUsd") as number | undefined;
+    const REASON_LABELS: Record<string, string> = {
+      budget_exceeded: "Budget exceeded",
+      per_trade_limit_exceeded: "Per-trade limit exceeded",
+      trade_limit_reached: "Daily trade limit reached",
+    };
+    return (
+      <EntryRow dot="red">
+        <EntryLine>
+          <span className="font-medium text-accent-danger">{getEntryLabel(entry.action)}</span>
+          {reason && (
+            <span className="text-text-tertiary">{REASON_LABELS[reason] ?? reason.replace(/_/g, " ")}</span>
+          )}
+          {swapAmountUsd != null && (
+            <DataValue>{formatCurrency(swapAmountUsd)}</DataValue>
+          )}
+          <SponsorChip sponsor="metamask" text="Enforced" />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
   // ── rebalance_decision ─────────────────────────────────────────────
   // Layout: [Label] [Hold/Rebalance badge] | [Venice] [model] [tokens] [runtime]
   // Expanded: Reasoning + Market context rows
