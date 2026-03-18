@@ -45,7 +45,10 @@ packages/agent/              Backend — autonomous agent + HTTP API server
   src/
   ├── index.ts               CLI entrypoint
   ├── server.ts              HTTP API server (port 3147) — serves dashboard + JSON API
-  ├── agent-loop.ts          Core autonomous loop — orchestrates all modules
+  ├── agent-loop/            Core autonomous loop — orchestrates all modules
+  │   ├── index.ts           Loop orchestrator, drift calculation, cycle runner
+  │   ├── market-data.ts     Market data gathering (prices, balances, pools)
+  │   └── swap.ts            Swap execution with delegation redemption
   ├── agent-worker.ts        Per-intent worker (AbortController lifecycle, DB persistence)
   ├── worker-pool.ts         Concurrent worker management (max 5 intents)
   ├── config.ts              Env validation (Zod), contract addresses, chain config
@@ -68,7 +71,10 @@ packages/agent/              Backend — autonomous agent + HTTP API server
   │   ├── portfolio.ts       On-chain balances via viem RPC
   │   └── thegraph.ts        Uniswap V3 pool data via The Graph subgraph
   ├── identity/              PROTOCOL LABS — Agent Identity ($16K prize track)
-  │   └── erc8004.ts         ERC-8004 registration + reputation feedback on Base
+  │   ├── erc8004.ts         ERC-8004 Identity Registry — per-intent agent NFT
+  │   ├── judge.ts           Venice LLM judge — evaluates swap quality, writes reputation
+  │   ├── validation.ts      Validation Registry — per-swap evidence chain
+  │   └── dimensions.ts      Scoring dimensions (decision, execution, goal-progress)
   └── logging/               Observability
       ├── agent-log.ts       Global JSONL structured logging
       ├── intent-log.ts      Per-intent JSONL logs (downloadable via API)
@@ -91,9 +97,14 @@ agent.json                   PAM spec manifest — capabilities, tools, security
 
 ---
 
+## Live Demo
+
+- **Dashboard**: [https://veil.moe](https://veil.moe)
+- **API**: [https://api.veil.moe](https://api.veil.moe)
+
 ## What Works Right Now
 
-**Tested:** 239 agent unit tests, 34 Playwright e2e tests, dashboard lint passing.
+**Tested:** 406 unit tests + 25 integration/e2e tests across 3 packages.
 
 - Venice LLM integration — 3 model tiers, structured output, web search + scraping, budget tracking
 - Intent compilation — natural language → structured delegation parameters via Venice
@@ -105,13 +116,14 @@ agent.json                   PAM spec manifest — capabilities, tools, security
 - Permit2 EIP-712 signing flow — proven end-to-end (`scripts/swap-usdc-eth.ts`)
 - Pool data from The Graph — top 3 pools fed into LLM reasoning with liquidity guidance
 - Token prices via Venice web search (60s cache)
-- ERC-8004 agent registration + dynamic reputation feedback on Base Sepolia
+- ERC-8004 three-registry architecture — Identity, Reputation, and Validation on Base Sepolia
+- Venice LLM judge evaluates swap quality across 3 dimensions (decision, execution, goal-progress)
 - Multi-wallet intent persistence (SQLite, WAL mode, intent CRUD API)
 - Per-intent worker pool with AbortController lifecycle (max 5 concurrent)
 - Wallet-scoped nonce-signing auth flow (HMAC bearer tokens)
 - Per-intent JSONL logs (downloadable via API)
-- Next.js dashboard with Configure → Audit → Monitor flow
-- Live deployment at `http://195.201.8.147:3147`
+- Next.js 16 dashboard with Configure → Audit → Monitor flow
+- Full-stack e2e tests against both VPS and Vercel deployments
 
 **On-chain evidence:** 4 successful Sepolia txs, 4 Base Sepolia txs, 1 Base Mainnet registration. See `docs/sponsor-prize-audit.md` for full tx list.
 
@@ -121,7 +133,7 @@ agent.json                   PAM spec manifest — capabilities, tools, security
 
 ```bash
 # Clone
-git clone git@github.com:neilei/synthesis-hackathon.git
+git clone https://github.com/neilei/synthesis-hackathon.git
 cd synthesis-hackathon
 
 # Install (pnpm workspaces)
@@ -129,7 +141,7 @@ pnpm install
 
 # Configure
 cp .env.example .env
-# Fill in: VENICE_API_KEY, UNISWAP_API_KEY, AGENT_PRIVATE_KEY
+# Fill in: VENICE_API_KEY, UNISWAP_API_KEY, AGENT_PRIVATE_KEY, DELEGATOR_PRIVATE_KEY
 
 # Test
 pnpm test             # unit tests (agent + common + dashboard)

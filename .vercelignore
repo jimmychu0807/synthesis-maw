@@ -1,0 +1,12 @@
+.worktrees
+.turbo
+.playwright-mcp
+packages/agent
+data
+reference
+docs
+*.db
+*.db-wal
+*.db-shm
+*.jsonl
+vps-*.png

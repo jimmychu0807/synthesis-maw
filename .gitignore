@@ -12,3 +12,18 @@ test-results/
 playwright-report/
 .next/
 .worktrees/
+.vercel/
+
+# Internal working files (not for public repo)
+.claude/
+reference/
+HACKATHON_INTEL.md
+PRIZE_CATALOG_RAW.md
+PROJECT_CONCEPTS_ARCHIVE.md
+PROPOSALS.md
+SKILL_RAW.md
+SPONSOR_TECH.md
+THEMES_RAW.md
+UNISWAP_DEEP_INTEGRATION.md
+GITHUB_README_RAW.md
+vps-*.png
