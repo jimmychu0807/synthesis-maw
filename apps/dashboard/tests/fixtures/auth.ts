@@ -14,7 +14,7 @@
  *
  * @module @veil/dashboard/tests/fixtures/auth
  */
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const agentPort = process.env.AGENT_PORT || "3148";
@@ -67,6 +67,7 @@ export const test = base.extend<{ auth: AuthFixture }>({
       { wallet: account.address, tkn: token },
     );
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright fixture callback, not a React hook
     await use({ wallet: account.address.toLowerCase(), token });
   },
 });
@@ -79,7 +80,8 @@ export const test = base.extend<{ auth: AuthFixture }>({
 export async function gotoAuthenticated(
   page: Page,
   path: string,
-  _auth: AuthFixture,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  auth: AuthFixture,
 ): Promise<void> {
   await page.goto(path);
 }
