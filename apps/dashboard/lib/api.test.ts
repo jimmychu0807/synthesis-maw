@@ -229,7 +229,7 @@ describe("fetchIntentDetail", () => {
 
     const result = await fetchIntentDetail("abc", "token");
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/intents/abc", {
+    expect(mockFetch).toHaveBeenCalledWith("/api/intents/abc?limit=10000", {
       headers: { Authorization: "Bearer token" },
       credentials: "include",
     });

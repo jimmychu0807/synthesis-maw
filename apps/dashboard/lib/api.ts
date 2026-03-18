@@ -96,7 +96,7 @@ export async function fetchIntentDetail(
   intentId: string,
   token: string,
 ): Promise<IntentRecord & { logs: AgentLogEntry[]; liveState: unknown }> {
-  const res = await fetch(`/api/intents/${intentId}`, {
+  const res = await fetch(`/api/intents/${intentId}?limit=10000`, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });
