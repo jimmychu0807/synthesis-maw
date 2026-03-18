@@ -50,6 +50,11 @@ export class WorkerPool {
     return "stopped";
   }
 
+  getQueuePosition(intentId: string): number | null {
+    const idx = this.queue.indexOf(intentId);
+    return idx === -1 ? null : idx + 1; // 1-based position
+  }
+
   getState(intentId: string): AgentState | null {
     const worker = this.active.get(intentId);
     return worker?.getState() ?? null;

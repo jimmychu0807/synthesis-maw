@@ -7,6 +7,8 @@ import { fetchIntentDetail, type IntentRecord } from "@/lib/api";
 export interface IntentDetail extends IntentRecord {
   logs: AgentLogEntry[];
   liveState: unknown;
+  lastCycleAt?: number | null;
+  queuePosition?: number | null;
 }
 
 export function useIntentDetail(

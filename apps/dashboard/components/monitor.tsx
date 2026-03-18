@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useAuth } from "@/hooks/use-auth";
 import { useIntents } from "@/hooks/use-intents";
@@ -12,6 +12,7 @@ import { StatsCard } from "./stats-card";
 import { SponsorBadge } from "./sponsor-badge";
 import { ErrorBanner } from "./error-banner";
 import { SkeletonCard, SkeletonTable } from "./skeleton";
+import { CycleCountdown } from "./cycle-countdown";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { SectionHeading } from "./ui/section-heading";
@@ -99,7 +100,7 @@ function IntentDetailView({
   onDeleted: () => void;
 }) {
   const { data, error, loading } = useIntentDetail(intentId, token);
-  const { entries: feedEntries } = useIntentFeed(intentId, token);
+  const { entries: feedEntries, sseError } = useIntentFeed(intentId, token);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -224,14 +225,31 @@ function IntentDetailView({
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatsCard label="Trades Executed" value={String(data.tradesExecuted)} />
         <StatsCard label="Total Spent" value={formatCurrency(data.totalSpentUsd)} />
-        <StatsCard label="Cycle" value={String(data.cycle)} />
-        <StatsCard
-          label="Worker Status"
-          value={data.workerStatus ?? "unknown"}
-          valueColor={
-            data.workerStatus === "running" ? "text-accent-positive" : "text-text-secondary"
-          }
-        />
+        <Card className="p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+            Next Cycle
+          </p>
+          <div className="mt-1">
+            <CycleCountdown
+              lastCycleAt={data.lastCycleAt}
+              intervalMs={20_000}
+              isActive={isActive && data.workerStatus === "running"}
+            />
+          </div>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+            Worker Status
+          </p>
+          <p className={`mt-1 font-mono text-2xl tabular-nums ${data.workerStatus === "running" ? "text-accent-positive" : "text-text-secondary"}`}>
+            {data.workerStatus ?? "unknown"}
+          </p>
+          {data.workerStatus === "queued" && data.queuePosition != null && (
+            <p className="mt-0.5 text-xs text-text-tertiary">
+              Position {data.queuePosition} in queue
+            </p>
+          )}
+        </Card>
       </div>
 
       {/* Allocation */}
@@ -283,6 +301,7 @@ function IntentDetailView({
       </Card>
 
       {/* Activity Feed (live via SSE) */}
+      {sseError && <ErrorBanner message={sseError} />}
       <ActivityFeed feed={feedEntries} />
     </div>
   );
@@ -292,7 +311,29 @@ export function Monitor({ onNavigateConfigure }: MonitorProps) {
   const { isConnected, address } = useAccount();
   const { token, isAuthenticated, authenticating } = useAuth();
   const { intents, error, loading, refresh } = useIntents(address, token);
-  const [selectedIntentId, setSelectedIntentId] = useState<string | null>(null);
+  const [selectedIntentId, setSelectedIntentId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("intent");
+  });
+
+  const selectIntent = useCallback((id: string | null) => {
+    if (id) {
+      window.history.pushState({ intentId: id }, "", `?intent=${id}`);
+    } else {
+      window.history.pushState(null, "", window.location.pathname);
+    }
+    setSelectedIntentId(id);
+  }, []);
+
+  useEffect(() => {
+    function handlePopState(e: PopStateEvent) {
+      const intentId = (e.state as { intentId?: string } | null)?.intentId ?? null;
+      setSelectedIntentId(intentId);
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Not connected
   if (!isConnected) {
@@ -335,9 +376,9 @@ export function Monitor({ onNavigateConfigure }: MonitorProps) {
       <IntentDetailView
         intentId={selectedIntentId}
         token={token}
-        onBack={() => setSelectedIntentId(null)}
+        onBack={() => selectIntent(null)}
         onDeleted={() => {
-          setSelectedIntentId(null);
+          selectIntent(null);
           refresh();
         }}
       />
@@ -403,7 +444,7 @@ export function Monitor({ onNavigateConfigure }: MonitorProps) {
           <IntentListItem
             key={intent.id}
             intent={intent}
-            onSelect={setSelectedIntentId}
+            onSelect={selectIntent}
           />
         ))}
       </div>

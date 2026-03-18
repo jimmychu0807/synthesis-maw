@@ -13,6 +13,15 @@ interface CycleGroupProps {
 export function CycleGroup({ group, defaultExpanded = false }: CycleGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
+  const total = group.entries.length;
+  const successCount = group.entries.filter((e) => !e.error).length;
+  const stepCountColor =
+    total === 0
+      ? "text-text-tertiary"
+      : successCount === total
+        ? "text-accent-positive"
+        : "text-accent-danger";
+
   // Init group (no cycle number)
   if (group.cycle === null) {
     return (
@@ -27,8 +36,8 @@ export function CycleGroup({ group, defaultExpanded = false }: CycleGroupProps) 
             ▶
           </span>
           Initialization
-          <span className="ml-auto font-mono tabular-nums text-text-tertiary">
-            {group.entries.length} events
+          <span className={`ml-auto font-mono tabular-nums ${stepCountColor}`}>
+            {successCount}/{total} steps
           </span>
         </button>
         {expanded && (
@@ -82,8 +91,8 @@ export function CycleGroup({ group, defaultExpanded = false }: CycleGroupProps) 
         {group.hasError && (
           <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent-danger" />
         )}
-        <span className="ml-auto font-mono tabular-nums text-text-tertiary">
-          {group.entries.length}
+        <span className={`ml-auto font-mono tabular-nums ${stepCountColor}`}>
+          {successCount}/{total} steps
         </span>
       </button>
       {expanded && (

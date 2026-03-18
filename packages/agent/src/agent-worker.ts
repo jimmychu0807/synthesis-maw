@@ -92,7 +92,7 @@ export class DefaultAgentWorker implements AgentWorker {
       delegatorKey: env.DELEGATOR_PRIVATE_KEY,
       agentKey: env.AGENT_PRIVATE_KEY,
       chainId: 11155111,
-      intervalMs: 60_000,
+      intervalMs: 20_000,
       signal: this.abortController.signal,
       intentLogger: this.intentLogger,
       intentId: this.intentId,
