@@ -104,6 +104,22 @@ describe("generateAuditReport", () => {
     expect(report.warnings.some((w) => w.includes("10.0%"))).toBe(true);
   });
 
+  it("includes per-trade limit in ALLOWS section", () => {
+    const intent = makeIntent({ maxPerTradeUsd: 5 });
+    const delegation = makeSampleDelegation();
+    const report = generateAuditReport(intent, delegation);
+
+    expect(report.allows.some((a) => a.includes("$5") && a.includes("per individual trade"))).toBe(true);
+  });
+
+  it("includes per-trade limit in PREVENTS section", () => {
+    const intent = makeIntent({ maxPerTradeUsd: 10 });
+    const delegation = makeSampleDelegation();
+    const report = generateAuditReport(intent, delegation);
+
+    expect(report.prevents.some((p) => p.includes("$10") && p.includes("single trade"))).toBe(true);
+  });
+
   it("has no warnings for a safe intent with proper delegation", () => {
     const intent = makeIntent();
     const delegation = makeSampleDelegation();

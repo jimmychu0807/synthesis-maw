@@ -111,6 +111,7 @@ export const reasoningLlm = getVeniceLlm({
   model: REASONING_MODEL,
   temperature: 0,
   maxRetries: 2,
+  maxTokens: 3000,
   modelKwargs: reasoningVeniceParams,
   timeout: LLM_TIMEOUT_REASONING_MS,
 });

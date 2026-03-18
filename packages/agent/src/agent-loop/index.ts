@@ -57,6 +57,12 @@ export interface AgentConfig {
   existingAgentId?: bigint;
   /** Callback to persist newly registered agentId to database */
   onAgentIdRegistered?: (agentId: string) => void;
+  /** Resume from a previous cycle count (persisted from DB on restart) */
+  initialCycle?: number;
+  /** Resume from a previous trade count */
+  initialTradesExecuted?: number;
+  /** Resume from a previous total spent */
+  initialTotalSpentUsd?: number;
 }
 
 export interface AgentState {
@@ -112,10 +118,10 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
   const state: AgentState = {
     delegation: null,
     delegatorSmartAccount: null,
-    tradesExecuted: 0,
-    totalSpentUsd: 0,
+    tradesExecuted: config.initialTradesExecuted ?? 0,
+    totalSpentUsd: config.initialTotalSpentUsd ?? 0,
     running: true,
-    cycle: 0,
+    cycle: config.initialCycle ?? 0,
     ethPrice: 0,
     drift: 0,
     allocation: {},
@@ -146,7 +152,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
   });
 
   // Check for existing agentId (persisted from previous run)
-  if (config.existingAgentId) {
+  if (config.existingAgentId != null) {
     state.agentId = config.existingAgentId;
     logger.info({ agentId: config.existingAgentId.toString() }, "Resuming with existing ERC-8004 agent ID");
     logAction("erc8004_register", {
@@ -167,7 +173,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
         { label: "erc8004:register", maxRetries: 3 },
       );
       logger.info({ txHash, agentId: agentId?.toString() }, "ERC-8004 agent registered");
-      if (agentId) {
+      if (agentId != null) {
         state.agentId = agentId;
         // Persist to DB so it survives restarts
         config.onAgentIdRegistered?.(agentId.toString());
@@ -414,7 +420,7 @@ async function getRebalanceDecision(
       method: "functionCalling",
     });
 
-  const decision = await structuredReasoning.invoke([
+  const rawDecision = await structuredReasoning.invoke([
     {
       role: "system",
       content: `You are a DeFi portfolio rebalancing agent. Analyze the current portfolio state and decide if a rebalance is needed.
@@ -430,6 +436,7 @@ Drift threshold: ${(config.intent.driftThreshold * 100).toFixed(1)}%
 ETH price: $${market.ethPrice.price.toFixed(2)}
 ${market.poolContext ? `\nLiquidity data:\n${market.poolContext}\n\nUse the TVL and volume data above to assess whether sufficient liquidity exists for the proposed swap size. If the swap amount is >1% of pool TVL, consider reducing the trade size or splitting across cycles.` : ""}
 Daily budget: $${config.intent.dailyBudgetUsd}
+Max per trade: $${config.intent.maxPerTradeUsd}
 Trades executed: ${state.tradesExecuted}
 Total spent: $${state.totalSpentUsd.toFixed(2)} / $${(config.intent.dailyBudgetUsd * config.intent.timeWindowDays).toFixed(2)}
 Max slippage: ${(config.intent.maxSlippage * 100).toFixed(2)}%
@@ -442,6 +449,14 @@ Decide whether to rebalance. If yes, specify the swap details. Keep swap amounts
         "Should the portfolio be rebalanced now? Consider current market conditions and liquidity.",
     },
   ]);
+
+  // LLM structured output can return undefined/null when the response doesn't parse
+  const parseResult = RebalanceDecisionSchema.safeParse(rawDecision);
+  if (!parseResult.success) {
+    logger.warn({ raw: rawDecision, zodError: parseResult.error.issues }, "Venice returned unparseable rebalance decision — treating as HOLD");
+    return { shouldRebalance: false, reasoning: "LLM response could not be parsed" };
+  }
+  const decision = parseResult.data;
 
   const decisionResult = {
     shouldRebalance: decision.shouldRebalance,
@@ -551,9 +566,11 @@ export async function startFromCli(
   intentText: string,
   maxCycles?: number,
 ): Promise<void> {
-  const { generatePrivateKey } = await import("viem/accounts");
+  if (!env.DELEGATOR_PRIVATE_KEY) {
+    throw new Error("DELEGATOR_PRIVATE_KEY is not set — cannot start agent without it. Set it in .env and restart.");
+  }
 
-  const delegatorKey = env.DELEGATOR_PRIVATE_KEY ?? generatePrivateKey();
+  const delegatorKey = env.DELEGATOR_PRIVATE_KEY;
 
   logger.info("Parsing intent via Venice...");
   const intent = await compileIntent(intentText);

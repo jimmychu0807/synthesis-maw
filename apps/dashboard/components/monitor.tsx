@@ -20,7 +20,7 @@ import { SectionHeading } from "./ui/section-heading";
 import { PulsingDot } from "./ui/pulsing-dot";
 import { AllocationBar } from "./allocation-bar";
 import { StrategyDetails } from "./strategy-details";
-import { Spinner } from "./ui/icons";
+import { AuthPrompt } from "./auth-prompt";
 import {
   generateAuditReport,
   truncateAddress,
@@ -154,6 +154,19 @@ function IntentDetailView({
     }
   }, [intentId, token]);
 
+  const reputation = useMemo(() => {
+    const judgeEntries = feedEntries.filter(
+      (e) => e.action === "judge_completed" && e.result
+    );
+    if (judgeEntries.length === 0) return null;
+    const scores = judgeEntries
+      .map((e) => (e.result as Record<string, unknown>)?.composite as number | undefined)
+      .filter((s): s is number => s != null);
+    if (scores.length === 0) return null;
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    return { average: avg, count: scores.length };
+  }, [feedEntries]);
+
   if (loading && !data) {
     return (
       <div className="space-y-6 p-6">
@@ -255,9 +268,28 @@ function IntentDetailView({
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatsCard label="Trades Executed" value={String(data.tradesExecuted)} />
         <StatsCard label="Total Spent" value={formatCurrency(data.totalSpentUsd)} />
+        <Card className="p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+            Reputation
+          </p>
+          {reputation ? (
+            <div className="mt-1">
+              <span className={`font-mono text-2xl tabular-nums font-medium ${reputation.average * 10 >= 70 ? "text-accent-positive" : reputation.average * 10 >= 50 ? "text-amber-400" : "text-accent-danger"}`}>
+                {(reputation.average * 10).toFixed(0)}/100
+              </span>
+              <p className="mt-0.5 text-xs text-text-tertiary">
+                {reputation.count} evaluation{reputation.count !== 1 ? "s" : ""}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 font-mono text-2xl tabular-nums text-text-secondary">
+              —
+            </p>
+          )}
+        </Card>
         <Card className="p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
             Next Cycle
@@ -375,32 +407,7 @@ export function Monitor({ onNavigateConfigure }: MonitorProps) {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8 sm:p-16 text-center">
-        {authenticating ? (
-          <>
-            <Spinner className="h-6 w-6 animate-spin text-text-tertiary" />
-            <p className="text-sm text-text-secondary">Authenticating wallet...</p>
-          </>
-        ) : authError ? (
-          <>
-            <p className="text-sm text-accent-danger">{authError}</p>
-            <button
-              onClick={authenticate}
-              className="mt-2 cursor-pointer rounded-lg border border-accent-positive px-5 py-2.5 min-h-[44px] text-sm font-medium text-accent-positive transition-colors hover:bg-accent-positive-dim active:bg-accent-positive/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-positive"
-            >
-              Retry Authentication
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-text-secondary">Wallet authentication required.</p>
-            <button
-              onClick={authenticate}
-              className="mt-2 cursor-pointer rounded-lg border border-accent-positive px-5 py-2.5 min-h-[44px] text-sm font-medium text-accent-positive transition-colors hover:bg-accent-positive-dim active:bg-accent-positive/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-positive"
-            >
-              Authenticate
-            </button>
-          </>
-        )}
+        <AuthPrompt authenticating={authenticating} error={authError} onAuthenticate={authenticate} />
       </div>
     );
   }

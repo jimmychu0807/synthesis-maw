@@ -118,17 +118,26 @@ export async function evaluateSwap(
   );
 
   // 2. Submit validation request on-chain (agent wallet)
-  const validationRequestTxHash = await submitValidationRequest(
-    input.agentId,
-    judgeAddress,
-    requestURI,
-    requestHash,
-  );
-
-  logger.info(
-    { txHash: validationRequestTxHash },
-    "Judge: validation request submitted",
-  );
+  // Wrapped in try/catch — contract may revert if agentId ownership is stale,
+  // but we still want the LLM evaluation to complete.
+  let validationRequestTxHash: Hex = "0x0" as Hex;
+  try {
+    validationRequestTxHash = await submitValidationRequest(
+      input.agentId,
+      judgeAddress,
+      requestURI,
+      requestHash,
+    );
+    logger.info(
+      { txHash: validationRequestTxHash },
+      "Judge: validation request submitted",
+    );
+  } catch (err) {
+    logger.warn(
+      { err, agentId: input.agentId.toString() },
+      "Judge: validation request failed on-chain (continuing with LLM evaluation)",
+    );
+  }
 
   // 3. Venice LLM evaluation
   const dimensions = getDimensionsForIntent(intentType);
@@ -178,19 +187,25 @@ export async function evaluateSwap(
       responseDoc,
     );
 
-    const txHash = await submitValidationResponse(
-      requestHash,
-      scores[dim.tag]!,
-      responseURI,
-      responseHash,
-      dim.tag,
-    );
-    validationResponseTxHashes[dim.tag] = txHash;
-
-    logger.info(
-      { dimension: dim.tag, score: scores[dim.tag], txHash },
-      "Judge: validation response submitted",
-    );
+    try {
+      const txHash = await submitValidationResponse(
+        requestHash,
+        scores[dim.tag]!,
+        responseURI,
+        responseHash,
+        dim.tag,
+      );
+      validationResponseTxHashes[dim.tag] = txHash;
+      logger.info(
+        { dimension: dim.tag, score: scores[dim.tag], txHash },
+        "Judge: validation response submitted",
+      );
+    } catch (err) {
+      logger.warn(
+        { err, dimension: dim.tag },
+        "Judge: validation response failed on-chain (continuing)",
+      );
+    }
   }
 
   // 6. Compute composite score and submit reputation feedback (judge wallet)
@@ -212,20 +227,27 @@ export async function evaluateSwap(
     feedbackDoc,
   );
 
-  const feedbackTxHash = await giveFeedback(
-    input.agentId,
-    compositeScaled,
-    "swap-quality",
-    intentType,
-    "base-sepolia",
-    feedbackURI,
-    feedbackHash,
-  );
-
-  logger.info(
-    { composite: compositeScaled, feedbackTxHash },
-    "Judge: reputation feedback submitted",
-  );
+  let feedbackTxHash: Hex = "0x0" as Hex;
+  try {
+    feedbackTxHash = await giveFeedback(
+      input.agentId,
+      compositeScaled,
+      "swap-quality",
+      intentType,
+      "base-sepolia",
+      feedbackURI,
+      feedbackHash,
+    );
+    logger.info(
+      { composite: compositeScaled, feedbackTxHash },
+      "Judge: reputation feedback submitted",
+    );
+  } catch (err) {
+    logger.warn(
+      { err, agentId: input.agentId.toString() },
+      "Judge: reputation feedback failed on-chain (continuing)",
+    );
+  }
 
   return {
     scores,
@@ -269,17 +291,26 @@ export async function evaluateSwapFailure(
   );
 
   // 2. Submit validation request on-chain (agent wallet)
-  const validationRequestTxHash = await submitValidationRequest(
-    input.agentId,
-    judgeAddress,
-    requestURI,
-    requestHash,
-  );
-
-  logger.info(
-    { txHash: validationRequestTxHash },
-    "Judge: failure validation request submitted",
-  );
+  // Wrapped in try/catch — contract may revert if agentId ownership is stale,
+  // but we still want the LLM evaluation to complete.
+  let validationRequestTxHash: Hex = "0x0" as Hex;
+  try {
+    validationRequestTxHash = await submitValidationRequest(
+      input.agentId,
+      judgeAddress,
+      requestURI,
+      requestHash,
+    );
+    logger.info(
+      { txHash: validationRequestTxHash },
+      "Judge: failure validation request submitted",
+    );
+  } catch (err) {
+    logger.warn(
+      { err, agentId: input.agentId.toString() },
+      "Judge: failure validation request failed on-chain (continuing with LLM evaluation)",
+    );
+  }
 
   // 3. Venice LLM evaluation
   const dimensions = getDimensionsForIntent(intentType);
@@ -330,19 +361,25 @@ export async function evaluateSwapFailure(
       responseDoc,
     );
 
-    const txHash = await submitValidationResponse(
-      requestHash,
-      scores[dim.tag]!,
-      responseURI,
-      responseHash,
-      dim.tag,
-    );
-    validationResponseTxHashes[dim.tag] = txHash;
-
-    logger.info(
-      { dimension: dim.tag, score: scores[dim.tag], txHash },
-      "Judge: failure validation response submitted",
-    );
+    try {
+      const txHash = await submitValidationResponse(
+        requestHash,
+        scores[dim.tag]!,
+        responseURI,
+        responseHash,
+        dim.tag,
+      );
+      validationResponseTxHashes[dim.tag] = txHash;
+      logger.info(
+        { dimension: dim.tag, score: scores[dim.tag], txHash },
+        "Judge: failure validation response submitted",
+      );
+    } catch (err) {
+      logger.warn(
+        { err, dimension: dim.tag },
+        "Judge: failure validation response failed on-chain (continuing)",
+      );
+    }
   }
 
   // 6. Compute composite score and submit reputation feedback (judge wallet)
@@ -365,20 +402,27 @@ export async function evaluateSwapFailure(
     feedbackDoc,
   );
 
-  const feedbackTxHash = await giveFeedback(
-    input.agentId,
-    compositeScaled,
-    "swap-quality",
-    intentType,
-    "base-sepolia",
-    feedbackURI,
-    feedbackHash,
-  );
-
-  logger.info(
-    { composite: compositeScaled, feedbackTxHash },
-    "Judge: failure reputation feedback submitted",
-  );
+  let feedbackTxHash: Hex = "0x0" as Hex;
+  try {
+    feedbackTxHash = await giveFeedback(
+      input.agentId,
+      compositeScaled,
+      "swap-quality",
+      intentType,
+      "base-sepolia",
+      feedbackURI,
+      feedbackHash,
+    );
+    logger.info(
+      { composite: compositeScaled, feedbackTxHash },
+      "Judge: failure reputation feedback submitted",
+    );
+  } catch (err) {
+    logger.warn(
+      { err, agentId: input.agentId.toString() },
+      "Judge: failure reputation feedback failed on-chain (continuing)",
+    );
+  }
 
   return {
     scores,

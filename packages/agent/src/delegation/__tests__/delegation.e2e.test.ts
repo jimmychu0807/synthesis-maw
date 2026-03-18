@@ -23,6 +23,7 @@ describe("Delegation creation + signing (e2e)", () => {
     dailyBudgetUsd: 200,
     timeWindowDays: 7,
     maxTradesPerDay: 10,
+    maxPerTradeUsd: 200,
     maxSlippage: 0.005,
     driftThreshold: 0.05,
   };

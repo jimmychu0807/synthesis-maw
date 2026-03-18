@@ -50,6 +50,7 @@ export function generateAuditReport(
   const allows: string[] = [
     `Trade up to $${intent.dailyBudgetUsd}/day for ${intent.timeWindowDays} days`,
     `Maximum ${intent.maxTradesPerDay} trades per day (${totalTrades} total)`,
+    `Maximum $${intent.maxPerTradeUsd} per individual trade`,
     `Slippage up to ${(intent.maxSlippage * 100).toFixed(1)}%`,
     `Rebalance when drift exceeds ${(intent.driftThreshold * 100).toFixed(1)}%`,
     `Target allocation: ${allocDesc}`,
@@ -59,6 +60,7 @@ export function generateAuditReport(
   const prevents: string[] = [
     `Spending more than $${totalBudget.toLocaleString()} total`,
     `More than ${totalTrades} trades over the full period`,
+    `Any single trade exceeding $${intent.maxPerTradeUsd}`,
     `Any activity after ${expiryDate.toISOString().split("T")[0]}`,
     `Transfers to non-approved contract targets`,
     `Trading tokens outside the delegation scope`,

@@ -18,6 +18,7 @@ const MOCK_PARSE_RESPONSE = {
     maxSlippage: 0.005,
     driftThreshold: 0.05,
     maxTradesPerDay: 10,
+    maxPerTradeUsd: 200,
   },
   audit: {
     allows: ["Swap ETH ↔ USDC on Uniswap V3"],

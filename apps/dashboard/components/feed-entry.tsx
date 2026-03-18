@@ -7,24 +7,28 @@ interface FeedEntryProps {
   entry: AgentLogEntry;
 }
 
-const ETHERSCAN_TX = "https://sepolia.etherscan.io/tx/";
+const EXPLORER_URLS: Record<string, string> = {
+  "ethereum-sepolia": "https://sepolia.etherscan.io/tx/",
+  "base-sepolia": "https://sepolia.basescan.org/tx/",
+};
 
 /** Safely read a nested value from the untyped result record. */
 function r(result: Record<string, unknown> | undefined, key: string): unknown {
   return result?.[key];
 }
 
-/** Render an etherscan tx link if a hash is present. */
-function TxLink({ hash }: { hash: string | undefined }) {
-  if (!hash) return null;
+/** Render a block explorer tx link. Chain defaults to ethereum-sepolia. */
+function TxLink({ hash, chain = "ethereum-sepolia", label, className = "" }: { hash: string | undefined; chain?: string; label?: string; className?: string }) {
+  if (!hash || hash === "0x0") return null;
+  const base = EXPLORER_URLS[chain] ?? EXPLORER_URLS["ethereum-sepolia"];
   return (
     <a
-      href={`${ETHERSCAN_TX}${hash}`}
+      href={`${base}${hash}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="ml-2 font-mono text-xs text-accent-secondary hover:underline"
+      className={`font-mono text-xs text-accent-secondary hover:underline ${className}`}
     >
-      {truncateHash(hash)}
+      {label ? `${label} ` : ""}{truncateHash(hash)}
       <span className="sr-only"> (opens in new tab)</span>
     </a>
   );
@@ -259,7 +263,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
           {viaDelegation && (
             <Badge variant="positive">delegation</Badge>
           )}
-          <TxLink hash={txHash} />
+          <TxLink hash={txHash} className="ml-2" />
         </div>
       </div>
     );
@@ -282,7 +286,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
               ({caveatsCount} caveat{caveatsCount !== 1 ? "s" : ""})
             </span>
           )}
-          <TxLink hash={txHash} />
+          <TxLink hash={txHash} className="ml-2" />
           <Duration ms={entry.duration_ms} />
         </div>
       </div>
@@ -295,8 +299,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
       <div className="flex items-start gap-2 py-1 text-sm">
         <Dot color="gray" />
         <div className="min-w-0">
-          <span className="text-text-tertiary">{getEntryLabel(entry.action)}</span>
-          <span className="ml-2 text-text-tertiary">evaluating...</span>
+          <span className="text-text-tertiary">Judge evaluation started</span>
         </div>
       </div>
     );
@@ -305,21 +308,106 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   // ── judge_completed ────────────────────────────────────────────────
   if (entry.action === "judge_completed" && res) {
     const composite = r(res, "composite") as number | undefined;
+    const scores = r(res, "scores") as Record<string, number> | undefined;
+    const reasonings = r(res, "reasonings") as Record<string, string> | undefined;
     const feedbackTxHash = r(res, "feedbackTxHash") as string | undefined;
+    const validationRequestTxHash = r(res, "validationRequestTxHash") as string | undefined;
+    const outcome = r(res, "outcome") as string | undefined;
+
+    const compositeScore = composite != null ? composite * 10 : null; // 0-10 → 0-100 for display
+    const scoreColor = compositeScore != null
+      ? compositeScore >= 70 ? "text-accent-positive" : compositeScore >= 50 ? "text-amber-400" : "text-accent-danger"
+      : "text-text-secondary";
+
+    const DIMENSION_LABELS: Record<string, { label: string; weight: string }> = {
+      "decision-quality": { label: "Decision Quality", weight: "40%" },
+      "execution-quality": { label: "Execution Quality", weight: "30%" },
+      "goal-progress": { label: "Goal Progress", weight: "30%" },
+    };
+
     return (
       <div className="flex items-start gap-2 py-1.5 text-sm">
-        <Dot color="green" />
-        <div className="min-w-0">
-          <span className="font-medium text-text-primary">
-            {getEntryLabel(entry.action)}
-          </span>
-          {composite != null && (
-            <span className="ml-2 font-mono tabular-nums text-text-secondary">
-              score {composite.toFixed(2)}
+        <Dot color={outcome === "failed" ? "red" : "green"} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-text-primary">
+              Judge {outcome === "failed" ? "(Failed Swap)" : ""}
             </span>
+            {compositeScore != null && (
+              <span className={`font-mono tabular-nums font-medium ${scoreColor}`}>
+                {compositeScore.toFixed(0)}/100
+              </span>
+            )}
+            {feedbackTxHash && feedbackTxHash !== "0x0" && (
+              <TxLink hash={feedbackTxHash} chain="base-sepolia" label="reputation" />
+            )}
+            {validationRequestTxHash && (
+              <TxLink hash={validationRequestTxHash} chain="base-sepolia" label="request" />
+            )}
+            <Duration ms={entry.duration_ms} />
+          </div>
+
+          {/* Dimension scores */}
+          {scores && (
+            <div className="mt-1.5 space-y-1">
+              {Object.entries(scores).map(([tag, score]) => {
+                const dim = DIMENSION_LABELS[tag];
+                const reasoning = reasonings?.[tag];
+                const isGoalProgress = tag === "goal-progress";
+
+                if (isGoalProgress) {
+                  const advanced = score >= 50;
+                  return (
+                    <div key={tag} className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary text-xs w-36 shrink-0">
+                          {dim?.label ?? tag}{" "}
+                          <span className="text-text-tertiary/60">{dim?.weight ?? ""}</span>
+                        </span>
+                        <span className={`font-mono text-xs font-medium ${advanced ? "text-accent-positive" : "text-accent-danger"}`}>
+                          {advanced ? "Yes" : "No"}
+                        </span>
+                      </div>
+                      {reasoning && (
+                        <p className="text-text-tertiary text-xs pl-[9.5rem] leading-relaxed line-clamp-2">
+                          {reasoning}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+
+                const dimColor = score >= 70 ? "text-accent-positive" : score >= 50 ? "text-amber-400" : "text-accent-danger";
+                return (
+                  <div key={tag} className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-text-tertiary text-xs w-36 shrink-0">
+                        {dim?.label ?? tag}{" "}
+                        <span className="text-text-tertiary/60">{dim?.weight ?? ""}</span>
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <div className="h-1 flex-1 max-w-24 rounded-full bg-border overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${score >= 70 ? "bg-accent-positive" : score >= 50 ? "bg-amber-400" : "bg-accent-danger"}`}
+                            style={{ width: `${score}%` }}
+                          />
+                        </div>
+                        <span className={`font-mono tabular-nums text-xs ${dimColor}`}>
+                          {score}
+                        </span>
+                      </div>
+                    </div>
+                    {reasoning && (
+                      <p className="text-text-tertiary text-xs pl-[9.5rem] leading-relaxed line-clamp-2">
+                        {reasoning}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
-          <TxLink hash={feedbackTxHash} />
-          <Duration ms={entry.duration_ms} />
+
         </div>
       </div>
     );
@@ -382,7 +470,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
               Agent ID: {agentId}
             </span>
           )}
-          <TxLink hash={txHash} />
+          <TxLink hash={txHash} className="ml-2" />
           <Duration ms={entry.duration_ms} />
         </div>
       </div>
@@ -397,7 +485,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
       <Dot color="gray" />
       <div className="min-w-0">
         <span className="text-text-tertiary">{getEntryLabel(entry.action)}</span>
-        <TxLink hash={fallbackTxHash} />
+        <TxLink hash={fallbackTxHash} className="ml-2" />
         <Duration ms={entry.duration_ms} />
       </div>
     </div>

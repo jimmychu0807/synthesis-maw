@@ -104,6 +104,7 @@ Rules:
 - dailyBudgetUsd is the maximum USD value of trades per day
 - timeWindowDays is how many days the delegation should last
 - maxTradesPerDay is how many trades per day are allowed (default 10 if not specified)
+- maxPerTradeUsd is the maximum USD value of any single trade (default to dailyBudgetUsd if not specified)
 - maxSlippage is expressed as a decimal (e.g., 0.5% = 0.005). Default to 0.005 if not specified.
 - driftThreshold is expressed as a decimal (e.g., 5% = 0.05). Default to 0.05 if not specified.`,
     },
@@ -121,6 +122,7 @@ Rules:
     dailyBudgetUsd: raw.dailyBudgetUsd,
     timeWindowDays: raw.timeWindowDays,
     maxTradesPerDay: raw.maxTradesPerDay,
+    maxPerTradeUsd: raw.maxPerTradeUsd,
     maxSlippage: raw.maxSlippage,
     driftThreshold: raw.driftThreshold,
   };

@@ -19,6 +19,7 @@ describe("Audit report generation (e2e)", () => {
     dailyBudgetUsd: 200,
     timeWindowDays: 7,
     maxTradesPerDay: 10,
+    maxPerTradeUsd: 200,
     maxSlippage: 0.005,
     driftThreshold: 0.05,
   };
@@ -183,6 +184,7 @@ describe("Audit report generation (e2e)", () => {
         dailyBudgetUsd: 5000, // exceeds $1,000 threshold
         timeWindowDays: 60, // exceeds 30-day threshold
         maxTradesPerDay: 10,
+        maxPerTradeUsd: 5000,
         maxSlippage: 0.05, // exceeds 2% threshold
         driftThreshold: 0.05,
       };

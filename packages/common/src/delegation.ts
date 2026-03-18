@@ -120,6 +120,7 @@ export function generateAuditReport(intent: ParsedIntent): AuditReport {
   const allows = [
     `Trade up to $${intent.dailyBudgetUsd}/day for ${intent.timeWindowDays} days`,
     `Maximum ${intent.maxTradesPerDay} trades per day (${totalTrades} total)`,
+    `Maximum $${intent.maxPerTradeUsd} per individual trade`,
     `Slippage up to ${slippagePct}%`,
     `Rebalance when drift exceeds ${driftPct}%`,
     `Target allocation: ${allocSummary}`,
@@ -133,6 +134,7 @@ export function generateAuditReport(intent: ParsedIntent): AuditReport {
   const prevents = [
     `Spending more than ${formatUsd(totalBudget)} total`,
     `More than ${totalTrades} trades over the full period`,
+    `Any single trade exceeding $${intent.maxPerTradeUsd}`,
     `Any activity after ${expiryStr}`,
     `Transfers to non-approved contract targets`,
     `Trading tokens outside the delegation scope`,

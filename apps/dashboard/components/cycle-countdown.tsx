@@ -13,7 +13,7 @@ function computeSecondsLeft(
   intervalMs: number,
 ): number {
   const nextCycleAt = lastCycleAt + intervalMs / 1000;
-  return Math.max(0, Math.ceil(nextCycleAt - Date.now() / 1000));
+  return Math.ceil(nextCycleAt - Date.now() / 1000);
 }
 
 export function CycleCountdown({
@@ -36,6 +36,14 @@ export function CycleCountdown({
   }, [lastCycleAt, intervalMs, isActive]);
 
   if (!isActive || !lastCycleAt || secondsLeft == null) return null;
+
+  if (secondsLeft <= 0) {
+    return (
+      <span className="font-mono text-2xl tabular-nums text-accent-positive animate-pulse">
+        processing&hellip;
+      </span>
+    );
+  }
 
   return (
     <span className="font-mono text-2xl tabular-nums text-text-primary">

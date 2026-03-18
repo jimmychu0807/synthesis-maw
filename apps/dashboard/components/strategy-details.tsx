@@ -46,6 +46,12 @@ export function StrategyDetails({
           {parsed.maxTradesPerDay}
         </p>
       </div>
+      <div>
+        <span className="text-text-secondary">Max Per Trade</span>
+        <p className="font-mono text-text-primary">
+          ${parsed.maxPerTradeUsd.toLocaleString()}
+        </p>
+      </div>
     </div>
   );
 }
