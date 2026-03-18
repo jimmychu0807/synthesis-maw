@@ -83,15 +83,6 @@ describe("Intent Lifecycle E2E", () => {
     serverProcess.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
     });
-    serverProcess.stdout?.on("data", (chunk: Buffer) => {
-      // Log server output for debugging
-      process.stderr.write(`[server] ${chunk.toString()}`);
-    });
-    serverProcess.on("exit", (code, signal) => {
-      process.stderr.write(
-        `[server] exited code=${code} signal=${signal}\n[server stderr] ${stderr}\n`,
-      );
-    });
 
     try {
       await waitForServer();
