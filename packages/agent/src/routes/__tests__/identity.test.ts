@@ -62,7 +62,7 @@ describe("identity.json route", () => {
     expect(body.name).toBe("Veil DeFi Rebalancer");
     expect(body.description).toContain("60% ETH / 40% USDC");
     expect(body.description).toContain("$200/day");
-    expect(body.image).toBe("https://veil.moe/veil-agent.svg");
+    expect(body.image).toBe("https://api.veil.moe/veil-agent.svg");
     expect(body.active).toBe(true);
     expect(body.supportedTrust).toEqual(["reputation"]);
   });

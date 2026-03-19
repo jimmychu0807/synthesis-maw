@@ -52,7 +52,7 @@ export function createIdentityRoutes(deps: IdentityRouteDeps) {
       type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
       name: "Veil DeFi Rebalancer",
       description: `Autonomous DeFi agent that privately reasons about portfolio rebalancing via Venice AI and executes trades on Uniswap within ERC-7715 delegation constraints. Strategy: ${allocSummary || "custom"}. Budget: $${parsedIntent?.dailyBudgetUsd ?? 0}/day.`,
-      image: "https://veil.moe/veil-agent.svg",
+      image: "https://api.veil.moe/veil-agent.svg",
       active: intent.status === "active",
       protocol: "custom",
       x402Support: false,

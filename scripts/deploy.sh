@@ -133,7 +133,7 @@ cmd_deploy() {
   # Clone or pull
   if ssh_run "test -d ${APP_DIR}/.git"; then
     log "Pulling latest code..."
-    ssh_run "cd ${APP_DIR} && git remote set-url origin ${REPO_URL} && git fetch origin main && git reset --hard origin/main"
+    ssh_run "cd ${APP_DIR} && git remote set-url origin ${REPO_URL} && git fetch origin && git reset --hard origin/${DEPLOY_BRANCH:-main}"
   else
     log "Cloning repository..."
     ssh_run "git clone ${REPO_URL} ${APP_DIR}"
