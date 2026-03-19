@@ -227,13 +227,12 @@ export async function evaluateSwap(
 
   // 6. Compute composite score and submit reputation feedback (judge wallet)
   const composite = computeCompositeScore(dimensions, scores);
-  const compositeScaled = composite / 10; // 0-100 -> 0-10 scale for reputation
 
   const feedbackDoc = {
     agentId: Number(input.agentId),
     intentId: input.intentId,
     cycle: input.cycle,
-    composite: compositeScaled,
+    composite,
     weights: Object.fromEntries(dimensions.map((d) => [d.tag, d.weight])),
     dimensions: scores,
     swapTxHash: input.swapTxHash,
@@ -248,7 +247,7 @@ export async function evaluateSwap(
   try {
     feedbackTxHash = await giveFeedback(
       input.agentId,
-      compositeScaled,
+      composite,
       "swap-quality",
       intentType,
       "base-sepolia",
@@ -256,7 +255,7 @@ export async function evaluateSwap(
       feedbackHash,
     );
     logger.info(
-      { composite: compositeScaled, feedbackTxHash },
+      { composite, feedbackTxHash },
       "Judge: reputation feedback submitted",
     );
   } catch (err) {
@@ -278,7 +277,7 @@ export async function evaluateSwap(
   return {
     scores,
     reasonings,
-    composite: compositeScaled,
+    composite,
     requestHash,
     validationRequestTxHash,
     validationResponseTxHashes,
@@ -422,13 +421,12 @@ export async function evaluateSwapFailure(
 
   // 6. Compute composite score and submit reputation feedback (judge wallet)
   const composite = computeCompositeScore(dimensions, scores);
-  const compositeScaled = composite / 10;
 
   const feedbackDoc = {
     agentId: Number(input.agentId),
     intentId: input.intentId,
     cycle: input.cycle,
-    composite: compositeScaled,
+    composite,
     outcome: "failed",
     weights: Object.fromEntries(dimensions.map((d) => [d.tag, d.weight])),
     dimensions: scores,
@@ -444,7 +442,7 @@ export async function evaluateSwapFailure(
   try {
     feedbackTxHash = await giveFeedback(
       input.agentId,
-      compositeScaled,
+      composite,
       "swap-quality",
       intentType,
       "base-sepolia",
@@ -452,7 +450,7 @@ export async function evaluateSwapFailure(
       feedbackHash,
     );
     logger.info(
-      { composite: compositeScaled, feedbackTxHash },
+      { composite, feedbackTxHash },
       "Judge: failure reputation feedback submitted",
     );
   } catch (err) {
@@ -474,7 +472,7 @@ export async function evaluateSwapFailure(
   return {
     scores,
     reasonings,
-    composite: compositeScaled,
+    composite,
     requestHash,
     validationRequestTxHash,
     validationResponseTxHashes,

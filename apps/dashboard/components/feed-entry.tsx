@@ -568,7 +568,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const judgeUsage = r(res, "usage") as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
     const hasOnChainFailures = (feedbackTxHash === "0x0" || !feedbackTxHash) || (judgeWarnings && judgeWarnings.length > 0);
 
-    const compositeScore = composite != null ? composite * 10 : null;
+    const compositeScore = composite ?? null;
     const scoreColor = compositeScore != null
       ? getScoreColor(compositeScore)
       : "text-text-secondary";

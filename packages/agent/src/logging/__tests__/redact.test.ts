@@ -58,7 +58,7 @@ describe("redactLogRow", () => {
       tool: null,
       parameters: null,
       result: JSON.stringify({
-        composite: 7.5,
+        composite: 75,
         scores: { "decision-quality": 80 },
         reasonings: { "decision-quality": "The agent made a good call..." },
       }),
@@ -67,7 +67,7 @@ describe("redactLogRow", () => {
     };
     const redacted = redactLogRow(row);
     expect(redacted).not.toBeNull();
-    expect(redacted!.result!.composite).toBe(7.5);
+    expect(redacted!.result!.composite).toBe(75);
     expect(redacted!.result!.reasonings).toBe("[private — encrypted via Venice.ai]");
     expect(redacted!.result!._redacted).toBe(true);
   });

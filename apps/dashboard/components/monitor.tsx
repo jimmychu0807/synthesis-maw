@@ -301,8 +301,8 @@ function IntentDetailView({
           </p>
           {reputation ? (
             <div className="mt-1">
-              <span className={`font-mono text-2xl tabular-nums font-medium ${getScoreColor(reputation.average * 10)}`}>
-                {(reputation.average * 10).toFixed(0)}/100
+              <span className={`font-mono text-2xl tabular-nums font-medium ${getScoreColor(reputation.average)}`}>
+                {reputation.average.toFixed(0)}/100
               </span>
               <p className="mt-0.5 text-xs text-text-tertiary">
                 {reputation.count} evaluation{reputation.count !== 1 ? "s" : ""}
