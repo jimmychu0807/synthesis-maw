@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useEffect } from "react";
+import { memo, useState, useRef, useEffect, type ReactNode } from "react";
 import Image from "next/image";
 import type { AgentLogEntry } from "@veil/common";
 import { Badge } from "./ui/badge";
@@ -204,6 +204,77 @@ function r(result: Record<string, unknown> | undefined, key: string): unknown {
   return result?.[key];
 }
 
+function rTyped<T>(result: Record<string, unknown> | undefined, key: string): T | undefined {
+  return result?.[key] as T | undefined;
+}
+
+function renderDimensionScores(
+  scores: Record<string, number> | undefined,
+  reasonings: Record<string, string> | undefined,
+  validationResponseTxHashes: Record<string, string> | undefined,
+  dimensionLabels: Record<string, { label: string; weight: string }>,
+): ReactNode {
+  if (!scores) return null;
+  return (
+    <div className="mt-1.5 space-y-1">
+      {Object.entries(scores).map(([tag, score]) => {
+        const dim = dimensionLabels[tag];
+        const reasoning = reasonings?.[tag];
+        const isGoalProgress = tag === "goal-progress";
+        const dimTxHash = validationResponseTxHashes?.[tag];
+
+        if (isGoalProgress) {
+          const advanced = score >= 50;
+          return (
+            <div key={tag}>
+              <div className="flex items-center gap-2">
+                <div className="text-text-tertiary text-xs w-32 shrink-0">
+                  {dim?.label ?? tag}
+                  <span className="text-text-tertiary/50 text-[10px] ml-1">{dim?.weight}</span>
+                </div>
+                <span className={`font-mono text-xs font-medium ${advanced ? "text-accent-positive" : "text-accent-danger"}`}>
+                  {advanced ? "Yes" : "No"}
+                </span>
+                <TxLink hash={dimTxHash} chain="base-sepolia" />
+              </div>
+              {reasoning && typeof reasoning === "string" && !reasoning.startsWith("[private") && (
+                <ExpandableReasoning text={reasoning} className="pl-[8.5rem] mt-0.5" />
+              )}
+            </div>
+          );
+        }
+
+        const dimColor = getScoreColor(score);
+        return (
+          <div key={tag}>
+            <div className="flex items-center gap-2">
+              <div className="text-text-tertiary text-xs w-32 shrink-0">
+                {dim?.label ?? tag}
+                <span className="text-text-tertiary/50 text-[10px] ml-1">{dim?.weight}</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <div className="h-1 flex-1 max-w-24 rounded-full bg-border overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${getScoreColor(score, "bg")}`}
+                    style={{ width: `${score}%` }}
+                  />
+                </div>
+                <span className={`font-mono tabular-nums text-xs ${dimColor}`}>
+                  {score}
+                </span>
+                <TxLink hash={dimTxHash} chain="base-sepolia" />
+              </div>
+            </div>
+            {reasoning && typeof reasoning === "string" && !reasoning.startsWith("[private") && (
+              <ExpandableReasoning text={reasoning} className="pl-[8.5rem] mt-0.5" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function getEntryLabel(action: string): string {
   const labels: Record<string, string> = {
     rebalance_decision: "Decision",
@@ -386,7 +457,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
           <TokenUsageTag usage={usage} />
           <RuntimeTag ms={entry.duration_ms} />
         </EntryLine>
-        {(res as Record<string, unknown>)?._redacted ? (
+        {res?._redacted === true ? (
           <PrivacyNotice className="mt-1.5" />
         ) : (
           <>
@@ -486,8 +557,8 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   // Expanded: Dimension scores with progress bars
   if (entry.action === "judge_completed" && res) {
     const composite = r(res, "composite") as number | undefined;
-    const scores = r(res, "scores") as Record<string, number> | undefined;
-    const reasonings = r(res, "reasonings") as Record<string, string> | undefined;
+    const scores = rTyped<Record<string, number>>(res, "scores");
+    const reasonings = rTyped<Record<string, string>>(res, "reasonings");
     const feedbackTxHash = r(res, "feedbackTxHash") as string | undefined;
     const validationRequestTxHash = r(res, "validationRequestTxHash") as string | undefined;
     const validationResponseTxHashes = r(res, "validationResponseTxHashes") as Record<string, string> | undefined;
@@ -533,65 +604,8 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
         </EntryLine>
 
         {/* Dimension scores */}
-        {scores && (
-          <div className="mt-1.5 space-y-1">
-            {Object.entries(scores).map(([tag, score]) => {
-              const dim = DIMENSION_LABELS[tag];
-              const reasoning = reasonings?.[tag];
-              const isGoalProgress = tag === "goal-progress";
-              const dimTxHash = validationResponseTxHashes?.[tag];
-
-              if (isGoalProgress) {
-                const advanced = score >= 50;
-                return (
-                  <div key={tag}>
-                    <div className="flex items-center gap-2">
-                      <div className="text-text-tertiary text-xs w-32 shrink-0">
-                        {dim?.label ?? tag}
-                        <span className="text-text-tertiary/50 text-[10px] ml-1">{dim?.weight}</span>
-                      </div>
-                      <span className={`font-mono text-xs font-medium ${advanced ? "text-accent-positive" : "text-accent-danger"}`}>
-                        {advanced ? "Yes" : "No"}
-                      </span>
-                      <TxLink hash={dimTxHash} chain="base-sepolia" />
-                    </div>
-                    {reasoning && typeof reasoning === "string" && !reasoning.startsWith("[private") && (
-                      <ExpandableReasoning text={reasoning} className="pl-[8.5rem] mt-0.5" />
-                    )}
-                  </div>
-                );
-              }
-
-              const dimColor = getScoreColor(score);
-              return (
-                <div key={tag}>
-                  <div className="flex items-center gap-2">
-                    <div className="text-text-tertiary text-xs w-32 shrink-0">
-                      {dim?.label ?? tag}
-                      <span className="text-text-tertiary/50 text-[10px] ml-1">{dim?.weight}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <div className="h-1 flex-1 max-w-24 rounded-full bg-border overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${getScoreColor(score, "bg")}`}
-                          style={{ width: `${score}%` }}
-                        />
-                      </div>
-                      <span className={`font-mono tabular-nums text-xs ${dimColor}`}>
-                        {score}
-                      </span>
-                      <TxLink hash={dimTxHash} chain="base-sepolia" />
-                    </div>
-                  </div>
-                  {reasoning && typeof reasoning === "string" && !reasoning.startsWith("[private") && (
-                    <ExpandableReasoning text={reasoning} className="pl-[8.5rem] mt-0.5" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {(res as Record<string, unknown>)?._redacted && (
+        {renderDimensionScores(scores, reasonings, validationResponseTxHashes, DIMENSION_LABELS)}
+        {res?._redacted === true && (
           <PrivacyNotice className="mt-2" />
         )}
       </EntryRow>

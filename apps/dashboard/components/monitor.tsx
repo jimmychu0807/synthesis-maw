@@ -132,6 +132,7 @@ function IntentDetailView({
     setConfirmingDelete(false);
     setActionError(null);
     try {
+      if (!token) return;
       await deleteIntent(intentId, token);
       onDeleted();
     } catch (err) {
