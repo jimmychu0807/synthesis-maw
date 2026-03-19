@@ -164,7 +164,7 @@ This matters because DeFi agent reasoning is uniquely sensitive. Over a 7-day tr
 
 | Capability | Integration | Details |
 |---|---|---|
-| **Multi-model routing** | 3 LLM tiers via single API | `qwen3-4b` (fast checks), `gemini-3-flash-preview` (web search + reasoning) — auto-downgrades when Venice balance is low |
+| **Multi-model routing** | 3 LLM tiers via single API | `qwen3-5-9b` (fast checks + web search), `gemini-3-flash-preview` (reasoning) — auto-downgrades when Venice balance is low |
 | **Web search + scraping** | Real-time ETH price | `enable_web_search: "on"` + `enable_web_scraping: true` with citations from CoinDesk/CoinGecko |
 | **Structured output** | Intent parsing, rebalance decisions, judge scoring | `.withStructuredOutput(zodSchema)` with `safeParse()` post-validation on every call |
 | **Privacy guarantees** | No-retention inference | `include_venice_system_prompt: false`, `enable_e2ee: true`, prompt caching per tier |
@@ -310,7 +310,7 @@ Each row links a sponsor prize claim to the implementation file, the test that p
 |-------|---------------|------|----------------|
 | Private cognition over sensitive DeFi data (no data retention) | [venice/llm.ts](packages/agent/src/venice/llm.ts) | [llm.test.ts](packages/agent/src/venice/__tests__/llm.test.ts) | `include_venice_system_prompt: false`, `enable_e2ee: true` in `baseVeniceParams`; portfolio strategy never leaves the agent |
 | Trustworthy outputs for public on-chain systems | [venice/schemas.ts](packages/agent/src/venice/schemas.ts) | [schemas.test.ts](packages/agent/src/venice/__tests__/schemas.test.ts) | `IntentParseSchema`, `RebalanceDecisionSchema`; `.withStructuredOutput()` + `safeParse()` — validated outputs drive on-chain delegation and swap execution |
-| Multi-model routing via `venice_parameters` | [venice/llm.ts](packages/agent/src/venice/llm.ts) | [llm.test.ts](packages/agent/src/venice/__tests__/llm.test.ts), [llm.e2e.test.ts](packages/agent/src/venice/__tests__/llm.e2e.test.ts) | 3 tiers: `qwen3-4b` (fast), `gemini-3-flash-preview` (web search + reasoning) — auto-downgrades when balance is low |
+| Multi-model routing via `venice_parameters` | [venice/llm.ts](packages/agent/src/venice/llm.ts) | [llm.test.ts](packages/agent/src/venice/__tests__/llm.test.ts), [llm.e2e.test.ts](packages/agent/src/venice/__tests__/llm.e2e.test.ts) | 3 tiers: `qwen3-5-9b` (fast + web search), `gemini-3-flash-preview` (reasoning) — auto-downgrades when balance is low |
 | Web search with citations + web scraping | [data/prices.ts](packages/agent/src/data/prices.ts) | [prices.test.ts](packages/agent/src/data/__tests__/prices.test.ts), [prices.e2e.test.ts](packages/agent/src/data/__tests__/prices.e2e.test.ts) | `enable_web_search: "on"`, `enable_web_scraping: true`, `enable_web_citations: true`; real ETH price from CoinDesk/CoinGecko |
 | Compute budget awareness | [logging/budget.ts](packages/agent/src/logging/budget.ts) | [budget.test.ts](packages/agent/src/logging/__tests__/budget.test.ts) | Custom fetch wrapper captures `x-venice-balance-usd` header; auto-switches to cheaper model tier |
 | Novel use: LLM-as-judge for on-chain reputation | [identity/judge.ts](packages/agent/src/identity/judge.ts) | [judge.test.ts](packages/agent/src/identity/__tests__/judge.test.ts) | Venice reasoning model evaluates each swap across 3 dimensions, scores feed into [Reputation Registry](https://sepolia.basescan.org/address/0x8004B663056A597Dffe9eCcC1965A193B7388713) |

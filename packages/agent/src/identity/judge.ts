@@ -29,7 +29,7 @@ import {
   submitValidationResponse,
   giveFeedback,
 } from "./erc8004.js";
-import { reasoningLlm, fastLlm } from "../venice/llm.js";
+import { reasoningLlm, fastLlm, FAST_MODEL, REASONING_MODEL } from "../venice/llm.js";
 import { env } from "../config.js";
 import { logger } from "../logging/logger.js";
 
@@ -194,7 +194,7 @@ export async function evaluateSwap(
       dimension: dim.tag,
       score: scores[dim.tag],
       reasoning: reasonings[dim.tag],
-      model: budgetCritical ? "qwen3-4b" : "gemini-3-flash-preview",
+      model: budgetCritical ? FAST_MODEL : REASONING_MODEL,
       evaluatedAt: new Date().toISOString(),
     };
     const { hash: responseHash, url: responseURI } = storeEvidence(
@@ -388,7 +388,7 @@ export async function evaluateSwapFailure(
       score: scores[dim.tag],
       reasoning: reasonings[dim.tag],
       outcome: "failed",
-      model: budgetCritical ? "qwen3-4b" : "gemini-3-flash-preview",
+      model: budgetCritical ? FAST_MODEL : REASONING_MODEL,
       evaluatedAt: new Date().toISOString(),
     };
     const { hash: responseHash, url: responseURI } = storeEvidence(

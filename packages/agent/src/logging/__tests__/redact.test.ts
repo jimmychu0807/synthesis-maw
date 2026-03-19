@@ -33,7 +33,7 @@ describe("redactLogRow", () => {
         shouldRebalance: true,
         reasoning: "ETH is undervalued because...",
         marketContext: "BTC dominance rising...",
-        model: "qwen3-4b",
+        model: "qwen3-5-9b",
       }),
       durationMs: 1200,
       error: null,
@@ -43,7 +43,7 @@ describe("redactLogRow", () => {
     expect(redacted!.result!.shouldRebalance).toBe(true);
     expect(redacted!.result!.reasoning).toBe("[private — encrypted via Venice.ai]");
     expect(redacted!.result!.marketContext).toBe("[private — encrypted via Venice.ai]");
-    expect(redacted!.result!.model).toBe("qwen3-4b");
+    expect(redacted!.result!.model).toBe("qwen3-5-9b");
     expect(redacted!.result!._redacted).toBe(true);
   });
 

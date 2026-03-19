@@ -80,7 +80,7 @@
       "name": "Venice AI LLM",
       "type": "http",
       "endpoint": "https://api.venice.ai/api/v1/",
-      "description": "Private AI inference with web search, structured output, and multi-model routing (qwen3-4b, gemini-3-flash, gemini-3-1-pro)",
+      "description": "Private AI inference with web search, structured output, and multi-model routing (qwen3-5-9b, gemini-3-flash-preview)",
       "auth": { "method": "bearer", "token_env": "VENICE_API_KEY" }
     },
     {

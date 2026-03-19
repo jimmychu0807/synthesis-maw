@@ -42,7 +42,7 @@ The project is **substantially functional** with real on-chain proof:
 |-----------|--------|---------|
 | Agent loop (autonomous rebalancing) | **REAL** | 2 on-chain swaps on Sepolia, 4,600+ log entries |
 | Venice LLM calls (pricing, reasoning) | **REAL** | Real API calls, web search citations captured |
-| Venice model names | **VALID** | All 3 models (`qwen3-4b`, `gemini-3-flash-preview`) confirmed valid via `GET /api/v1/models`. Model constants exported as `FAST_MODEL`/`RESEARCH_MODEL`/`REASONING_MODEL` — log entries reference dynamically |
+| Venice model names | **VALID** | All models (`qwen3-5-9b`, `gemini-3-flash-preview`) confirmed valid via `GET /api/v1/models`. Model constants exported as `FAST_MODEL`/`RESEARCH_MODEL`/`REASONING_MODEL` — log entries reference dynamically |
 | Uniswap Trading API (quote + swap) | **REAL** | 2 confirmed txs on Sepolia |
 | Permit2 | **EXERCISED** | Full flow proven: approval check → quote with permitData → EIP-712 PermitSingle signature → swap creation → on-chain tx `0x64e884db...`. Reverts on Sepolia due to thin pool liquidity but Permit2 signing and submission are confirmed working |
 | MetaMask delegation (create + sign) | **REAL** | Delegations created, signed, submitted to DelegationManager |
@@ -70,14 +70,14 @@ The project is **substantially functional** with real on-chain proof:
 |---------|------|--------|-------|
 | Web search with citations | `src/venice/llm.ts`, `src/data/prices.ts` | REAL | `enable_web_search: "on"`, `enable_web_citations: true`. Real ETH price lookups from CoinDesk/CoinGecko. Citations captured and logged |
 | Structured output | `src/venice/schemas.ts`, `src/data/prices.ts`, `src/delegation/compiler.ts` | REAL | `.withStructuredOutput(zodSchema)` + `safeParse()` post-validation. Used for intent parsing, price lookups, rebalance decisions |
-| Budget tracking | `src/venice/llm.ts`, `src/logging/budget.ts` | REAL | Custom fetch wrapper captures `x-venice-balance-usd` header. Auto-switches to `qwen3-4b` when balance < $0.50 |
-| Multi-model routing | `src/venice/llm.ts`, `src/config.ts` | REAL | 3 tiers: `qwen3-4b` (fast), `gemini-3-flash-preview` (research + reasoning). Model IDs exported as constants and used dynamically in all log entries |
+| Budget tracking | `src/venice/llm.ts`, `src/logging/budget.ts` | REAL | Custom fetch wrapper captures `x-venice-balance-usd` header. Auto-switches to cheaper model when balance < $0.50 |
+| Multi-model routing | `src/venice/llm.ts`, `src/config.ts` | REAL | 3 tiers: `qwen3-5-9b` (fast + web search), `gemini-3-flash-preview` (reasoning). Model IDs exported as constants and used dynamically in all log entries |
 | `include_venice_system_prompt: false` | `src/venice/llm.ts` | REAL | Set on all Venice calls |
 | Venice parameters | `src/venice/llm.ts` | REAL | `disable_thinking`, `include_search_results_in_stream`, `return_search_results_as_documents` all configured |
 
 ### Previous Audit Correction
 
-Current model configuration: `qwen3-4b` (fast), `gemini-3-flash-preview` (research + reasoning). Both confirmed valid via `GET https://api.venice.ai/api/v1/models`. Model IDs are now exported as `FAST_MODEL`, `RESEARCH_MODEL`, `REASONING_MODEL` constants from `venice/llm.ts` — all log entries reference these dynamically instead of hardcoded strings.
+Current model configuration: `qwen3-5-9b` (fast + web search), `gemini-3-flash-preview` (reasoning). All confirmed valid via `GET https://api.venice.ai/api/v1/models`. Model IDs are now exported as `FAST_MODEL`, `RESEARCH_MODEL`, `REASONING_MODEL` constants from `venice/llm.ts` — all log entries reference these dynamically instead of hardcoded strings.
 
 **NOTE:** Venice's model catalog changes frequently. Always verify model IDs against the live API rather than static documentation.
 

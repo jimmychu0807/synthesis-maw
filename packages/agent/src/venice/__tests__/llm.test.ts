@@ -43,9 +43,9 @@ describe("Venice LLM configuration", () => {
     expect(constructorCalls).toHaveLength(3);
   });
 
-  it("fast LLM uses qwen3-4b with web search disabled", () => {
+  it("fast LLM uses qwen3-5-9b with web search disabled", () => {
     const fast = constructorCalls[0]!;
-    expect(fast.model).toBe("qwen3-4b");
+    expect(fast.model).toBe("qwen3-5-9b");
     expect(fast.temperature).toBe(0.3);
 
     const kwargs = fast.modelKwargs as { venice_parameters: Record<string, unknown> };
@@ -54,9 +54,9 @@ describe("Venice LLM configuration", () => {
     expect(kwargs.venice_parameters.disable_thinking).toBe(true);
   });
 
-  it("research LLM uses gemini-3-flash-preview with web search and scraping enabled", () => {
+  it("research LLM uses qwen3-5-9b with web search and scraping enabled", () => {
     const research = constructorCalls[1]!;
-    expect(research.model).toBe("gemini-3-flash-preview");
+    expect(research.model).toBe("qwen3-5-9b");
     expect(research.temperature).toBe(0.5);
 
     const kwargs = research.modelKwargs as { venice_parameters: Record<string, unknown> };

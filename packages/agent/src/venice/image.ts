@@ -7,7 +7,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { env } from "../config.js";
-import { getVeniceLlm } from "./llm.js";
+import { getVeniceLlm, FAST_MODEL } from "./llm.js";
 import { logger } from "../logging/logger.js";
 import type { IntentParse } from "./schemas.js";
 
@@ -73,7 +73,7 @@ export async function generateImagePrompt(
   intent: IntentParse,
 ): Promise<string> {
   const llm = getVeniceLlm({
-    model: "qwen3-4b",
+    model: FAST_MODEL,
     temperature: 1.2,
     maxTokens: 1000,
     modelKwargs: {

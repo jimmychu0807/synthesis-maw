@@ -21,6 +21,7 @@ vi.mock("../../logging/budget.js", () => ({
 
 // Mock the LLM to return a canned prompt
 vi.mock("../llm.js", () => ({
+  FAST_MODEL: "qwen3-5-9b",
   getVeniceLlm: () => ({
     invoke: vi.fn().mockResolvedValue({
       content:
