@@ -8,7 +8,9 @@
 import type { ParsedIntent, AuditReport } from "./schemas.js";
 import { SECONDS_PER_DAY } from "./constants.js";
 
-const CONSERVATIVE_ETH_PRICE_USD = 500;
+/** Absolute floor — never price ETH below this regardless of live price. */
+export const ETH_PRICE_ABSOLUTE_FLOOR_USD = 500;
+const CONSERVATIVE_ETH_PRICE_USD = ETH_PRICE_ABSOLUTE_FLOOR_USD;
 const SAFETY_MAX_DAILY_BUDGET_USD = 1_000;
 const SAFETY_MAX_TIME_WINDOW_DAYS = 30;
 const SAFETY_MAX_SLIPPAGE = 0.02;
@@ -45,21 +47,47 @@ export function computeMaxCalls(
 }
 
 /**
+ * Compute a conservative ETH price floor from a live price.
+ * Halves the live price to give headroom for drops, but never goes
+ * below ETH_PRICE_ABSOLUTE_FLOOR_USD ($500).
+ *
+ * Users can override this in their intent prompt:
+ *   "... with ETH floor price $1500" → pass as ethPriceFloor
+ *   "... with ETH price $2000"       → pass as liveEthPrice
+ */
+export function computeConservativeEthPrice(
+  liveEthPrice?: number,
+  ethPriceFloor?: number,
+): number {
+  if (ethPriceFloor != null) {
+    return Math.max(ethPriceFloor, ETH_PRICE_ABSOLUTE_FLOOR_USD);
+  }
+  if (liveEthPrice != null) {
+    return Math.max(liveEthPrice / 2, ETH_PRICE_ABSOLUTE_FLOOR_USD);
+  }
+  return CONSERVATIVE_ETH_PRICE_USD;
+}
+
+/**
  * Compute the token amount per period for an ERC-7715 periodic permission.
- * For ETH: converts daily USD budget to wei using conservative ETH price.
+ * For ETH: converts daily USD budget to wei using a conservative price.
+ *   - If liveEthPrice is provided, uses livePrice/2 (never below $500 floor).
+ *   - If ethPriceFloor is provided, uses that directly (never below $500).
+ *   - Otherwise falls back to $500.
  * For USDC: converts daily USD budget to USDC units (6 decimals).
  */
 export function computePeriodAmount(
   dailyBudgetUsd: number,
   token: "ETH" | "USDC",
-  conservativeEthPrice = CONSERVATIVE_ETH_PRICE_USD,
+  liveEthPrice?: number,
+  ethPriceFloor?: number,
 ): bigint {
   if (dailyBudgetUsd === 0) return 0n;
   if (token === "USDC") {
     return BigInt(Math.ceil(dailyBudgetUsd * 1e6));
   }
-  // ETH: convert USD to ETH at conservative price, then to wei
-  const ethAmount = dailyBudgetUsd / conservativeEthPrice;
+  const price = computeConservativeEthPrice(liveEthPrice, ethPriceFloor);
+  const ethAmount = dailyBudgetUsd / price;
   return BigInt(Math.ceil(ethAmount * 1e18));
 }
 

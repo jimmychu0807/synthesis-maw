@@ -50,6 +50,8 @@ export {
   computeExpiryTimestamp,
   computeMaxCalls,
   computePeriodAmount,
+  computeConservativeEthPrice,
+  ETH_PRICE_ABSOLUTE_FLOOR_USD,
   detectAdversarialIntent,
   generateAuditReport,
   type AdversarialWarning,
