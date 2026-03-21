@@ -19,31 +19,9 @@ const SAFETY_MAX_SLIPPAGE = 0.02;
 // Delegation parameter computation
 // ---------------------------------------------------------------------------
 
-/**
- * Compute the maximum ETH value (in wei) a single delegation call can send.
- * Uses a conservative ETH price floor to ensure the budget covers the worst case.
- */
-export function computeMaxValueWei(
-  dailyBudgetUsd: number,
-  timeWindowDays: number,
-  conservativeEthPrice = CONSERVATIVE_ETH_PRICE_USD,
-): bigint {
-  const totalBudgetEth =
-    (dailyBudgetUsd * timeWindowDays) / conservativeEthPrice;
-  return BigInt(Math.ceil(totalBudgetEth * 1e18));
-}
-
 /** Compute delegation expiry as unix timestamp (seconds). */
 export function computeExpiryTimestamp(timeWindowDays: number): number {
   return Math.floor(Date.now() / 1000) + timeWindowDays * SECONDS_PER_DAY;
-}
-
-/** Compute max total calls allowed over the delegation lifetime. */
-export function computeMaxCalls(
-  maxTradesPerDay: number,
-  timeWindowDays: number,
-): number {
-  return maxTradesPerDay * timeWindowDays;
 }
 
 /**

@@ -46,9 +46,7 @@ export {
 } from "./erc8004-abi.js";
 
 export {
-  computeMaxValueWei,
   computeExpiryTimestamp,
-  computeMaxCalls,
   computePeriodAmount,
   computeConservativeEthPrice,
   ETH_PRICE_ABSOLUTE_FLOOR_USD,

@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  computeMaxValueWei,
   computeExpiryTimestamp,
-  computeMaxCalls,
   computePeriodAmount,
   computeConservativeEthPrice,
   ETH_PRICE_ABSOLUTE_FLOOR_USD,
@@ -21,26 +19,6 @@ const SAMPLE_INTENT: ParsedIntent = {
   driftThreshold: 0.05,
 };
 
-describe("computeMaxValueWei", () => {
-  it("computes max ETH value in wei using conservative price", () => {
-    // (200 * 7) / 500 = 2.8 ETH = 2.8e18 wei
-    const result = computeMaxValueWei(200, 7);
-    expect(result).toBe(BigInt("2800000000000000000"));
-  });
-
-  it("accepts custom conservative price", () => {
-    // (200 * 7) / 1000 = 1.4 ETH
-    const result = computeMaxValueWei(200, 7, 1000);
-    expect(result).toBe(BigInt("1400000000000000000"));
-  });
-
-  it("handles small budget", () => {
-    // (10 * 1) / 500 = 0.02 ETH
-    const result = computeMaxValueWei(10, 1);
-    expect(result).toBe(BigInt("20000000000000000"));
-  });
-});
-
 describe("computeExpiryTimestamp", () => {
   it("computes expiry as now + days * 86400", () => {
     const before = Math.floor(Date.now() / 1000);
@@ -55,16 +33,6 @@ describe("computeExpiryTimestamp", () => {
     const result = computeExpiryTimestamp(1);
     expect(result - now).toBeGreaterThanOrEqual(86399);
     expect(result - now).toBeLessThanOrEqual(86401);
-  });
-});
-
-describe("computeMaxCalls", () => {
-  it("computes total calls from trades per day and days", () => {
-    expect(computeMaxCalls(10, 7)).toBe(70);
-  });
-
-  it("works with 1 trade per day", () => {
-    expect(computeMaxCalls(1, 30)).toBe(30);
   });
 });
 
