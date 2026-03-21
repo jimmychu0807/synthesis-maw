@@ -17,10 +17,7 @@ import type { IntentParse } from "../venice/schemas.js";
 import { RebalanceDecisionSchema } from "../venice/schemas.js";
 import { reasoningLlm, fastLlm, FAST_MODEL, RESEARCH_MODEL, REASONING_MODEL } from "../venice/llm.js";
 import { detectAdversarialIntent } from "@veil/common";
-import {
-  compileIntent,
-  createDelegationFromIntent,
-} from "../delegation/compiler.js";
+import { compileIntent } from "../delegation/compiler.js";
 import { generateDetailedAudit, type DetailedAuditReport } from "../delegation/audit.js";
 import { logAction, logStart, logStop } from "../logging/agent-log.js";
 import { getBudgetTier } from "../logging/budget.js";
