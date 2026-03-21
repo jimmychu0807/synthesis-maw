@@ -8,6 +8,7 @@ export function usePublicIntentFeed(intentId: string | null) {
   const [entries, setEntries] = useState<AgentLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sseError, setSseError] = useState<string | null>(null);
+  const [liveSeqs, setLiveSeqs] = useState<Set<number>>(new Set());
   const errorCountRef = useRef(0);
   const esRef = useRef<EventSource | null>(null);
   const seenSeqRef = useRef(new Set<number>());
@@ -47,6 +48,7 @@ export function usePublicIntentFeed(intentId: string | null) {
         const entry = JSON.parse(e.data) as AgentLogEntry;
         if (seenSeqRef.current.has(entry.sequence)) return;
         seenSeqRef.current.add(entry.sequence);
+        setLiveSeqs((prev) => new Set(prev).add(entry.sequence));
         setEntries((prev) => [...prev, entry]);
       } catch {
         // Skip malformed SSE data
@@ -71,5 +73,5 @@ export function usePublicIntentFeed(intentId: string | null) {
     };
   }, [intentId, loadHistorical]);
 
-  return { entries, loading, sseError };
+  return { entries, loading, sseError, liveSeqs };
 }

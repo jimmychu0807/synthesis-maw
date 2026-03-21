@@ -19,6 +19,7 @@ import { CycleCountdown } from "./cycle-countdown";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { AnimatedNumber } from "./ui/animated-number";
 
 import { SectionHeading } from "./ui/section-heading";
 import { PulsingDot } from "./ui/pulsing-dot";
@@ -117,7 +118,7 @@ function IntentDetailView({
 
   const authFeed = useIntentFeed(isOwner ? intentId : null, token);
   const publicFeed = usePublicIntentFeed(!isOwner ? intentId : null);
-  const { entries: feedEntries, sseError } = isOwner ? authFeed : publicFeed;
+  const { entries: feedEntries, sseError, liveSeqs } = isOwner ? authFeed : publicFeed;
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -186,7 +187,7 @@ function IntentDetailView({
       <div className="space-y-6 p-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={i} />
+            <SkeletonCard key={i} index={i} />
           ))}
         </div>
         <Card className="p-5"><SkeletonTable rows={3} /></Card>
@@ -293,8 +294,17 @@ function IntentDetailView({
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatsCard label="Trades Executed" value={String(data.tradesExecuted)} />
-        <StatsCard label="Total Spent" value={formatCurrency(data.totalSpentUsd)} />
+        <StatsCard
+          label="Trades Executed"
+          value={String(data.tradesExecuted)}
+          numericValue={data.tradesExecuted}
+        />
+        <StatsCard
+          label="Total Spent"
+          value={formatCurrency(data.totalSpentUsd)}
+          numericValue={data.totalSpentUsd}
+          formatValue={formatCurrency}
+        />
         <Card className="p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
             Reputation
@@ -348,7 +358,7 @@ function IntentDetailView({
             <SectionHeading>Portfolio Progress</SectionHeading>
             {currentTotalValue != null && currentTotalValue > 0 && (
               <span className="font-mono text-lg tabular-nums text-text-primary">
-                {formatCurrency(currentTotalValue)}
+                <AnimatedNumber value={currentTotalValue} format={formatCurrency} />
               </span>
             )}
           </div>
@@ -362,8 +372,11 @@ function IntentDetailView({
                 <div className="flex items-center gap-2 mb-1.5">
                   <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">Target</p>
                   {currentDrift != null && (
-                    <span className={`font-mono text-xs tabular-nums ${currentDrift > 0.05 ? "text-accent-danger" : "text-accent-positive"}`}>
-                      {(currentDrift * 100).toFixed(1)}% drift
+                    <span className={`font-mono text-xs tabular-nums transition-colors duration-300 ${currentDrift > 0.05 ? "text-accent-danger" : "text-accent-positive"}`}>
+                      <AnimatedNumber
+                        value={currentDrift * 100}
+                        format={(n) => `${n.toFixed(1)}% drift`}
+                      />
                     </span>
                   )}
                 </div>
@@ -384,7 +397,7 @@ function IntentDetailView({
 
       {/* Activity Feed (live via SSE) */}
       {sseError && <ErrorBanner message={sseError} />}
-      <ActivityFeed feed={feedEntries} />
+      <ActivityFeed feed={feedEntries} liveSeqs={liveSeqs} />
     </div>
   );
 }
@@ -448,7 +461,7 @@ export function Monitor({ onNavigateConfigure }: MonitorProps) {
     return (
       <div className="space-y-4 p-6">
         {Array.from({ length: 3 }).map((_, i) => (
-          <SkeletonCard key={i} />
+          <SkeletonCard key={i} index={i} />
         ))}
       </div>
     );

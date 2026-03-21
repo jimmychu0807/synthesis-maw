@@ -11,6 +11,8 @@ import { PrivacyNotice } from "./privacy-notice";
 
 interface FeedEntryProps {
   entry: AgentLogEntry;
+  /** When true, the entry animates in with a slide-down fade. */
+  isNew?: boolean;
 }
 
 const EXPLORER_URLS: Record<string, string> = {
@@ -92,12 +94,14 @@ function TokenUsageTag({ usage, showSymbol = true }: { usage: { inputTokens?: nu
 function EntryRow({
   dot,
   children,
+  isNew,
 }: {
   dot: "green" | "red" | "blue" | "gray";
   children: React.ReactNode;
+  isNew?: boolean;
 }) {
   return (
-    <div className="flex gap-2.5 py-1.5 text-sm">
+    <div className={`flex gap-2.5 py-1.5 text-sm ${isNew ? "animate-feed-in" : ""}`}>
       {/* Dot container: h-5 matches the line-height of text-sm (20px), centers the dot */}
       <div className="flex h-5 w-1.5 shrink-0 items-center">
         <StatusDot color={dot} />
@@ -255,7 +259,7 @@ function renderDimensionScores(
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
                 <div className="h-1 flex-1 max-w-24 rounded-full bg-border overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${getScoreColor(score, "bg")}`}
+                    className={`h-full rounded-full transition-[width] duration-500 ${getScoreColor(score, "bg")}`}
                     style={{ width: `${score}%` }}
                   />
                 </div>
@@ -314,14 +318,14 @@ function getEntryLabel(action: string): string {
 
 // ── Main component ───────────────────────────────────────────────────────
 
-export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
+export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProps) {
   const isError = !!entry.error;
   const res = entry.result;
 
   // ── Error entries ──────────────────────────────────────────────────
   if (isError) {
     return (
-      <EntryRow dot="red">
+      <EntryRow dot="red" isNew={isNew}>
         <EntryLine>
           <span className="font-medium text-accent-danger">
             {getEntryLabel(entry.action)}
@@ -339,7 +343,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const model = r(res, "model") as string | undefined;
     const usage = r(res, "usage") as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
     return (
-      <EntryRow dot="gray">
+      <EntryRow dot="gray" isNew={isNew}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {price != null && <DataValue>ETH {formatCurrency(price)}</DataValue>}
@@ -358,7 +362,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const totalUsdValue = r(res, "totalUsdValue") as number | undefined;
     const allocation = r(res, "allocation") as Record<string, number> | undefined;
     return (
-      <EntryRow dot="gray">
+      <EntryRow dot="gray" isNew={isNew}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {totalUsdValue != null && <DataValue>{formatCurrency(totalUsdValue)}</DataValue>}
@@ -378,7 +382,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   if (entry.action === "pool_data_fetch" && res) {
     const poolCount = r(res, "poolCount") as number | undefined;
     return (
-      <EntryRow dot="gray">
+      <EntryRow dot="gray" isNew={isNew}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {poolCount != null && (
@@ -396,7 +400,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   if (entry.action === "budget_check" && res) {
     const tier = r(res, "tier") as string | undefined;
     return (
-      <EntryRow dot="gray">
+      <EntryRow dot="gray" isNew={isNew}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {tier && (
@@ -421,7 +425,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
       trade_limit_reached: "Daily trade limit reached",
     };
     return (
-      <EntryRow dot="red">
+      <EntryRow dot="red" isNew={isNew}>
         <EntryLine>
           <span className="font-medium text-accent-danger">{getEntryLabel(entry.action)}</span>
           {reason && (
@@ -446,7 +450,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const model = r(res, "model") as string | undefined;
     const usage = r(res, "usage") as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
     return (
-      <EntryRow dot="green">
+      <EntryRow dot="green" isNew={isNew}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           <Badge variant={shouldRebalance ? "positive" : "warning"}>
@@ -484,7 +488,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const output = r(res, "output") as { amount?: string } | undefined;
     const viaDelegation = r(res, "viaDelegation") as boolean | undefined;
     return (
-      <EntryRow dot="blue">
+      <EntryRow dot="blue" isNew={isNew}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           {input?.amount && output?.amount && (
@@ -504,7 +508,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const txHash = r(res, "txHash") as string | undefined;
     const viaDelegation = r(res, "viaDelegation") as boolean | undefined;
     return (
-      <EntryRow dot="blue">
+      <EntryRow dot="blue" isNew={isNew}>
         <EntryLine>
           <EntryLabel>Swap</EntryLabel>
           <DataValue>
@@ -525,7 +529,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const txHash = r(res, "txHash") as string | undefined;
     const caveatsCount = r(res, "caveatsCount") as number | undefined;
     return (
-      <EntryRow dot="green">
+      <EntryRow dot="green" isNew={isNew}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           <DataValue>
@@ -543,7 +547,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   // Layout: [Label] | [Venice]
   if (entry.action === "judge_started") {
     return (
-      <EntryRow dot="gray">
+      <EntryRow dot="gray" isNew={isNew}>
         <EntryLine>
           <EntryLabelMuted>Judge evaluation started</EntryLabelMuted>
           <SponsorChip sponsor="venice" text="Venice.ai" />
@@ -580,7 +584,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     };
 
     return (
-      <EntryRow dot={outcome === "failed" ? "red" : "green"}>
+      <EntryRow dot={outcome === "failed" ? "red" : "green"} isNew={isNew}>
         <EntryLine>
           <EntryLabel>
             Judge{outcome === "failed" ? " (Failed Swap)" : ""}
@@ -617,7 +621,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   if (entry.action === "judge_warning" && res) {
     const error = r(res, "error") as string | undefined;
     return (
-      <EntryRow dot="red">
+      <EntryRow dot="red" isNew={isNew}>
         <EntryLine>
           <span className="font-medium text-accent-danger">
             {getEntryLabel(entry.action)}
@@ -637,7 +641,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const ethPrice = r(res, "ethPrice") as number | undefined;
     const allocation = r(res, "allocation") as Record<string, number> | undefined;
     return (
-      <EntryRow dot="green">
+      <EntryRow dot="green" isNew={isNew}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           {totalValue != null && <DataValue>{formatCurrency(totalValue)}</DataValue>}
@@ -668,7 +672,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     const agentId = r(res, "agentId") as string | undefined;
     const txHash = r(res, "txHash") as string | undefined;
     return (
-      <EntryRow dot="green">
+      <EntryRow dot="green" isNew={isNew}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           {agentId && <DataValue>Agent #{agentId}</DataValue>}
@@ -684,7 +688,7 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   const fallbackTxHash = res ? (r(res, "txHash") as string | undefined) : undefined;
 
   return (
-    <EntryRow dot="gray">
+    <EntryRow dot="gray" isNew={isNew}>
       <EntryLine>
         <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
         <TxLink hash={fallbackTxHash} />

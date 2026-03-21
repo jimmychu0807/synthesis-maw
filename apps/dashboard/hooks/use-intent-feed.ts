@@ -11,6 +11,8 @@ export function useIntentFeed(
   const [entries, setEntries] = useState<AgentLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sseError, setSseError] = useState<string | null>(null);
+  /** Sequence numbers of entries that arrived live via SSE (for animation). */
+  const [liveSeqs, setLiveSeqs] = useState<Set<number>>(new Set());
   const errorCountRef = useRef(0);
   const esRef = useRef<EventSource | null>(null);
   const seenSeqRef = useRef(new Set<number>());
@@ -53,6 +55,7 @@ export function useIntentFeed(
         const entry = JSON.parse(e.data) as AgentLogEntry;
         if (seenSeqRef.current.has(entry.sequence)) return;
         seenSeqRef.current.add(entry.sequence);
+        setLiveSeqs((prev) => new Set(prev).add(entry.sequence));
         setEntries((prev) => [...prev, entry]);
       } catch {
         // Skip malformed SSE data
@@ -78,5 +81,5 @@ export function useIntentFeed(
     };
   }, [intentId, token, loadHistorical]);
 
-  return { entries, loading, sseError };
+  return { entries, loading, sseError, liveSeqs };
 }

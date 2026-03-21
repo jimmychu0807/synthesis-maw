@@ -10,9 +10,11 @@ import { groupFeedByCycle } from "@/lib/group-feed";
 
 interface ActivityFeedProps {
   feed: AgentLogEntry[];
+  /** Sequence numbers of entries that arrived live via SSE. */
+  liveSeqs?: Set<number>;
 }
 
-export function ActivityFeed({ feed }: ActivityFeedProps) {
+export function ActivityFeed({ feed, liveSeqs }: ActivityFeedProps) {
   // Reverse so newest cycles appear at the top
   const groups = useMemo(() => groupFeedByCycle(feed).reverse(), [feed]);
 
@@ -32,6 +34,7 @@ export function ActivityFeed({ feed }: ActivityFeedProps) {
               key={group.cycle ?? "init"}
               group={group}
               defaultExpanded={group === groups[0]}
+              liveSeqs={liveSeqs}
             />
           ))
         ) : (

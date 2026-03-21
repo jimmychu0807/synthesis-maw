@@ -9,9 +9,11 @@ import { Spinner } from "./ui/icons";
 interface CycleGroupProps {
   group: CycleGroupData;
   defaultExpanded?: boolean;
+  /** Sequence numbers of entries that arrived live via SSE. */
+  liveSeqs?: Set<number>;
 }
 
-export function CycleGroup({ group, defaultExpanded = false }: CycleGroupProps) {
+export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const { completed, total, pendingLabel } = group.progress;
@@ -53,9 +55,9 @@ export function CycleGroup({ group, defaultExpanded = false }: CycleGroupProps) 
           </span>
         </button>
         {expanded && (
-          <div id={panelId} className="mt-1 space-y-0 pl-4">
+          <div id={panelId} className="mt-1 space-y-0 pl-4 animate-expand">
             {group.entries.map((entry) => (
-              <FeedEntry key={entry.sequence} entry={entry} />
+              <FeedEntry key={entry.sequence} entry={entry} isNew={liveSeqs?.has(entry.sequence)} />
             ))}
           </div>
         )}
@@ -125,9 +127,9 @@ export function CycleGroup({ group, defaultExpanded = false }: CycleGroupProps) 
         </span>
       </button>
       {expanded && (
-        <div id={panelId} className="mt-1 space-y-0 pl-4">
+        <div id={panelId} className="mt-1 space-y-0 pl-4 animate-expand">
           {group.entries.map((entry) => (
-            <FeedEntry key={entry.sequence} entry={entry} />
+            <FeedEntry key={entry.sequence} entry={entry} isNew={liveSeqs?.has(entry.sequence)} />
           ))}
         </div>
       )}
