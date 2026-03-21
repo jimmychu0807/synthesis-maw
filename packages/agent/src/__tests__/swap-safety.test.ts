@@ -34,6 +34,7 @@ vi.mock("../venice/llm.js", () => ({
   fastLlm: {},
 }));
 vi.mock("../delegation/redeemer.js", () => ({ pullNativeToken: vi.fn(), pullErc20Token: vi.fn(), deploySmartAccountIfNeeded: vi.fn() }));
+vi.mock("../delegation/allowance.js", () => ({ getErc20Allowance: vi.fn().mockResolvedValue(null), getNativeAllowance: vi.fn().mockResolvedValue(null) }));
 vi.mock("../identity/judge.js", () => ({
   evaluateSwap: vi.fn(),
   evaluateSwapFailure: vi.fn(),
@@ -226,5 +227,35 @@ describe("executeSwap safety checks", () => {
         result: expect.objectContaining({ reason: "trade_limit_reached" }),
       }),
     );
+  });
+
+  it("throws on insufficient ERC-20 delegation allowance before attempting pull", async () => {
+    // Import and mock allowance to return insufficient amount
+    const { getErc20Allowance } = await import("../delegation/allowance.js");
+    const mockAllowance = vi.mocked(getErc20Allowance);
+    mockAllowance.mockResolvedValueOnce({
+      availableAmount: 1000000n, // 1 USDC (need 3)
+      isNewPeriod: false,
+      currentPeriod: 1n,
+    });
+
+    const config = makeConfig({ maxPerTradeUsd: 1000, dailyBudgetUsd: 1000 });
+    const state = makeState({
+      permissions: [
+        { type: "erc20-token-periodic", context: "0xdeadbeef", token: "USDC" },
+      ],
+      delegationManager: "0xDM",
+    });
+
+    await expect(
+      executeSwap(
+        config,
+        state,
+        { sellToken: "USDC", buyToken: "ETH", sellAmount: "3", maxSlippage: "0.005" },
+        AGENT_ADDRESS,
+        sepolia,
+        2000,
+      ),
+    ).rejects.toThrow("Delegation allowance insufficient");
   });
 });

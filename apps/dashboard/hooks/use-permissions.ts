@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useWalletClient } from "wagmi";
+import { useConfig } from "wagmi";
+import { sepolia } from "wagmi/chains";
+import { getWalletClient } from "wagmi/actions";
 import { erc7715ProviderActions, type PermissionRequestParameter } from "@metamask/smart-accounts-kit/actions";
 import type { ParsedIntent } from "@veil/common";
 import { AGENT_ADDRESS, computePeriodAmount, computeExpiryTimestamp } from "@veil/common";
@@ -20,12 +22,19 @@ export interface PermissionResult {
 }
 
 export function usePermissions() {
-  const { data: walletClient } = useWalletClient();
+  const config = useConfig();
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const requestPermissions = useCallback(
     async (parsed: ParsedIntent): Promise<PermissionResult | null> => {
+      let walletClient;
+      try {
+        walletClient = await getWalletClient(config, { chainId: sepolia.id });
+      } catch {
+        setError("Wallet not connected");
+        return null;
+      }
       if (!walletClient) {
         setError("Wallet not connected");
         return null;
@@ -49,7 +58,7 @@ export function usePermissions() {
             "ETH",
           );
           permissionRequests.push({
-            chainId: walletClient.chain.id,
+            chainId: sepolia.id,
             expiry,
             to: AGENT_ADDRESS as `0x${string}`,
             isAdjustmentAllowed: true,
@@ -70,7 +79,7 @@ export function usePermissions() {
             "USDC",
           );
           permissionRequests.push({
-            chainId: walletClient.chain.id,
+            chainId: sepolia.id,
             expiry,
             to: AGENT_ADDRESS as `0x${string}`,
             isAdjustmentAllowed: true,
@@ -108,6 +117,7 @@ export function usePermissions() {
           dependencies: grantedPermissions[0]?.dependencies ?? [],
         };
       } catch (err) {
+        console.error("[usePermissions] Error requesting permissions:", err);
         const msg =
           err instanceof Error ? err.message : "Permission request failed";
         if (msg.includes("User rejected") || msg.includes("denied")) {
@@ -120,7 +130,7 @@ export function usePermissions() {
         setRequesting(false);
       }
     },
-    [walletClient],
+    [config],
   );
 
   return {

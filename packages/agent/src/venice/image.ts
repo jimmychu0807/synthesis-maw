@@ -14,6 +14,7 @@ import type { IntentParse } from "./schemas.js";
 const IMAGE_DIR = join("data", "images");
 const IMAGE_MODEL = "nano-banana-2";
 const IMAGE_SIZE = "1024x1024";
+const AVATAR_TIMEOUT_MS = 30_000; // 30s total budget for avatar generation
 
 const SYSTEM_PROMPT = `You are creating a portrait of a sentient DeFi trading agent. This is not a robot. This is not a dashboard. This is a CREATURE — born from the intent of a human who wanted their money to move autonomously through decentralized markets while they slept.
 
@@ -139,6 +140,7 @@ export async function generateAgentAvatar(
           size: IMAGE_SIZE,
           response_format: "url",
         }),
+        signal: AbortSignal.timeout(AVATAR_TIMEOUT_MS),
       },
     );
 
@@ -156,7 +158,9 @@ export async function generateAgentAvatar(
     }
 
     // Step 3: Download and save
-    const imageResponse = await fetch(imageUrl);
+    const imageResponse = await fetch(imageUrl, {
+      signal: AbortSignal.timeout(AVATAR_TIMEOUT_MS),
+    });
     if (!imageResponse.ok) {
       throw new Error(`Failed to download image: ${imageResponse.status}`);
     }

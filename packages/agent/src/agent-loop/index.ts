@@ -7,7 +7,7 @@
  */
 import type { SwapRecord } from "@veil/common";
 import { AIMessage } from "@langchain/core/messages";
-import type { Address } from "viem";
+import { type Address, type Hex, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, base } from "viem/chains";
 import { env } from "../config.js";
@@ -27,6 +27,9 @@ import { withRetry } from "../utils/retry.js";
 
 import { gatherMarketData, type MarketData } from "./market-data.js";
 import { executeSwap } from "./swap.js";
+import { getErc20Allowance, getNativeAllowance } from "../delegation/allowance.js";
+import { evaluateSwapFailure } from "../identity/judge.js";
+import type { SwapFailureEvidenceInput } from "../identity/evidence.js";
 
 // Re-export extracted modules for convenience
 export { gatherMarketData, type MarketData } from "./market-data.js";
@@ -86,6 +89,8 @@ export interface AgentState {
   audit: DetailedAuditReport | null;
   agentId: bigint | null;
   deployError: string | null;
+  /** Tracks which cycle was last judged (prevents double-judging) */
+  lastCycleJudged?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,26 +209,35 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
     }
   }
 
-  // Generate unique avatar image for this agent (skip if already exists on disk)
+  // Generate unique avatar image for this agent — runs in background, never blocks the main loop.
   if (state.agentId != null && config.intentId) {
     const existingAvatar = avatarPath(config.intentId);
     if (existsSync(existingAvatar)) {
       logger.info({ intentId: config.intentId }, "Agent avatar already exists, skipping generation");
     } else {
-      try {
-        await generateAgentAvatar(config.intentId, config.intent);
-        logger.info({ intentId: config.intentId }, "Agent avatar generated");
-        config.intentLogger?.log("avatar_generated", {
-          tool: "venice-image",
-          result: { intentId: config.intentId, model: "nano-banana-2" },
+      const avatarIntentId = config.intentId;
+      const avatarIntent = config.intent;
+      const avatarLogger = config.intentLogger;
+      avatarLogger?.log("avatar_generating", {
+        tool: "venice-image",
+        result: { intentId: avatarIntentId, model: "nano-banana-2" },
+      });
+      // Fire-and-forget: don't await — avatar gen is nice-to-have, not blocking
+      generateAgentAvatar(avatarIntentId, avatarIntent)
+        .then(() => {
+          logger.info({ intentId: avatarIntentId }, "Agent avatar generated");
+          avatarLogger?.log("avatar_generated", {
+            tool: "venice-image",
+            result: { intentId: avatarIntentId, model: "nano-banana-2" },
+          });
+        })
+        .catch((err: unknown) => {
+          logger.warn({ err, intentId: avatarIntentId }, "Avatar generation failed — continuing with fallback SVG");
+          avatarLogger?.log("avatar_generation_failed", {
+            tool: "venice-image",
+            error: err instanceof Error ? err.message : String(err),
+          });
         });
-      } catch (err) {
-        logger.warn({ err, intentId: config.intentId }, "Avatar generation failed — continuing with fallback SVG");
-        config.intentLogger?.log("avatar_generation_failed", {
-          tool: "venice-image",
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
     }
   }
 
@@ -349,6 +363,59 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
         cycle: state.cycle,
         error: msg,
       });
+
+      // Judge the failed cycle (skip if already judged inside executeSwap)
+      if (state.agentId != null && env.JUDGE_PRIVATE_KEY && state.lastCycleJudged !== state.cycle) {
+        try {
+          const failureInput: SwapFailureEvidenceInput = {
+            agentId: state.agentId,
+            intentId: config.intentId ?? "unknown",
+            cycle: state.cycle,
+            intent: {
+              targetAllocation: config.intent.targetAllocation,
+              dailyBudgetUsd: config.intent.dailyBudgetUsd,
+              driftThreshold: config.intent.driftThreshold,
+              maxSlippage: config.intent.maxSlippage,
+              timeWindowDays: config.intent.timeWindowDays,
+              maxTradesPerDay: config.intent.maxTradesPerDay,
+              maxPerTradeUsd: config.intent.maxPerTradeUsd,
+            },
+            beforeSwap: {
+              allocation: { ...state.allocation },
+              drift: state.drift,
+              portfolioValueUsd: state.totalValue,
+            },
+            attemptedSwap: { sellToken: "unknown", buyToken: "unknown", sellAmount: "0" },
+            errorMessage: msg,
+            agentReasoning: "Cycle failed before or during swap execution",
+            marketContext: { ethPriceUsd: state.ethPrice },
+          };
+
+          logAction("judge_started", { cycle: state.cycle, tool: "venice-judge", result: { outcome: "cycle_error" } });
+          config.intentLogger?.log("judge_started", { cycle: state.cycle, tool: "venice-judge", result: { outcome: "cycle_error" } });
+
+          const judgeResult = await evaluateSwapFailure(failureInput, "rebalance", state.budgetTier === "critical");
+          state.lastCycleJudged = state.cycle;
+          const judgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
+          logAction("judge_completed", {
+            cycle: state.cycle,
+            tool: "venice-judge",
+            result: { outcome: "cycle_error", composite: judgeResult.composite, scores: judgeResult.scores, model: judgeModel },
+          });
+          config.intentLogger?.log("judge_completed", {
+            cycle: state.cycle,
+            tool: "venice-judge",
+            result: { outcome: "cycle_error", composite: judgeResult.composite, scores: judgeResult.scores, model: judgeModel },
+          });
+        } catch (judgeErr) {
+          logger.warn({ err: judgeErr }, "Judge evaluation for cycle error failed");
+          config.intentLogger?.log("judge_failed", {
+            cycle: state.cycle,
+            tool: "venice-judge",
+            error: judgeErr instanceof Error ? judgeErr.message : String(judgeErr),
+          });
+        }
+      }
     }
 
     const cycleResult = {
@@ -434,6 +501,7 @@ async function getRebalanceDecision(
   config: AgentConfig,
   state: AgentState,
   market: MarketData & { drift: Record<string, number>; maxDrift: number },
+  allowances?: Record<string, { available: bigint; decimals: number }>,
 ): Promise<{ shouldRebalance: boolean; reasoning: string; marketContext?: string | null; targetSwap?: { sellToken: string; buyToken: string; sellAmount: string; maxSlippage: string } | null }> {
   logger.info("Drift detected. Consulting Venice for rebalance decision...");
 
@@ -469,7 +537,14 @@ HARD RULES — violations will be rejected by the safety system:
 3. maxSlippage MUST NOT exceed ${(config.intent.maxSlippage * 100).toFixed(2)}%.
 4. Only trade tokens in the target allocation: ${Object.keys(config.intent.targetAllocation).join(", ")}.
 5. If shouldRebalance is true, targetSwap MUST be provided with valid sellAmount.
-
+6. The sellAmount MUST NOT exceed the delegation allowance for the sell token. If allowance is 0, do NOT propose a swap for that token.
+${allowances && Object.keys(allowances).length > 0
+  ? `\nDelegation allowances (remaining in current period):\n${
+      Object.entries(allowances)
+        .map(([token, { available, decimals }]) => `- ${token}: ${formatUnits(available, decimals)}`)
+        .join("\n")
+    }\nThe on-chain enforcer will revert any transaction exceeding these limits.`
+  : ""}
 Size the trade to make meaningful progress on drift while staying well within these limits.`,
     },
     {
@@ -556,7 +631,38 @@ async function runCycle(
     return;
   }
 
-  const decision = await getRebalanceDecision(config, state, { ...market, drift, maxDrift });
+  // Query delegation allowances before consulting Venice
+  const allowances: Record<string, { available: bigint; decimals: number }> = {};
+  for (const perm of state.permissions) {
+    if (perm.type === "erc20-token-periodic") {
+      const result = await getErc20Allowance(perm.context as Hex, config.chainId);
+      if (result) {
+        allowances[perm.token.toUpperCase()] = { available: result.availableAmount, decimals: 6 };
+      }
+    } else if (perm.type === "native-token-periodic") {
+      const result = await getNativeAllowance(perm.context as Hex, config.chainId);
+      if (result) {
+        allowances["ETH"] = { available: result.availableAmount, decimals: 18 };
+      }
+    }
+  }
+
+  if (Object.keys(allowances).length > 0) {
+    const formatted = Object.fromEntries(
+      Object.entries(allowances).map(([token, { available, decimals }]) => [
+        token,
+        { availableRaw: available.toString(), availableFormatted: formatUnits(available, decimals) },
+      ]),
+    );
+    logger.info({ allowances: formatted }, "Delegation allowances queried");
+    config.intentLogger?.log("delegation_allowance", {
+      cycle: state.cycle,
+      tool: "metamask-caveat-enforcer",
+      result: formatted,
+    });
+  }
+
+  const decision = await getRebalanceDecision(config, state, { ...market, drift, maxDrift }, allowances);
 
   if (!decision.shouldRebalance || !decision.targetSwap) {
     return;

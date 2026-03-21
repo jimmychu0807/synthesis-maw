@@ -136,6 +136,8 @@ export async function pullNativeToken(
   );
 
   const txHash = await walletClient.sendTransactionWithDelegation({
+    account: walletClient.account,
+    chain: params.chain,
     to: params.agentAddress,
     data: "0x" as Hex,
     value: params.amount,
@@ -170,6 +172,8 @@ export async function pullErc20Token(
   );
 
   const txHash = await walletClient.sendTransactionWithDelegation({
+    account: walletClient.account,
+    chain: params.chain,
     to: params.tokenAddress,
     data: transferData,
     value: 0n,

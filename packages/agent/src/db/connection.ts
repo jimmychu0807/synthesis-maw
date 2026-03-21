@@ -57,6 +57,19 @@ const CREATE_TABLES_SQL = `
     ON agent_logs(intent_id, sequence);
 `;
 
+// Migrations for schema changes after initial creation.
+// Each statement runs individually; known-safe errors are ignored.
+const MIGRATIONS: { sql: string; ignoreErrors: string[] }[] = [
+  // Drop old delegation columns (replaced by ERC-7715 permissions)
+  { sql: `ALTER TABLE intents DROP COLUMN signed_delegation`, ignoreErrors: ["no such column"] },
+  { sql: `ALTER TABLE intents DROP COLUMN delegator_smart_account`, ignoreErrors: ["no such column"] },
+  { sql: `ALTER TABLE intents DROP COLUMN permissions_context`, ignoreErrors: ["no such column"] },
+  // Add new ERC-7715 permission columns
+  { sql: `ALTER TABLE intents ADD COLUMN permissions TEXT`, ignoreErrors: ["duplicate column"] },
+  { sql: `ALTER TABLE intents ADD COLUMN delegation_manager TEXT`, ignoreErrors: ["duplicate column"] },
+  { sql: `ALTER TABLE intents ADD COLUMN dependencies TEXT`, ignoreErrors: ["duplicate column"] },
+];
+
 let _db: BetterSQLite3Database<typeof schema> | null = null;
 let _sqlite: Database.Database | null = null;
 
@@ -74,6 +87,17 @@ export function getDb(
   _sqlite.pragma("journal_mode = WAL");
   _sqlite.pragma("foreign_keys = ON");
   _sqlite.exec(CREATE_TABLES_SQL);
+
+  // Run schema migrations (safe to re-run — ignores expected errors)
+  for (const migration of MIGRATIONS) {
+    try {
+      _sqlite.exec(migration.sql);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      const safe = migration.ignoreErrors.some((e) => msg.includes(e));
+      if (!safe) throw err;
+    }
+  }
 
   _db = drizzle(_sqlite, { schema });
   return _db;

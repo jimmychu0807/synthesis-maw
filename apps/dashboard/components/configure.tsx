@@ -67,7 +67,11 @@ export function Configure({ onSuccess }: ConfigureProps) {
   }, [intentText]);
 
   const handleDeploy = useCallback(async () => {
-    if (!parsed || !token) return;
+    console.log("[Configure] handleDeploy called. parsed:", !!parsed, "token:", !!token);
+    if (!parsed || !token) {
+      console.log("[Configure] Bailing early — parsed:", parsed, "token:", token);
+      return;
+    }
     setError(null);
 
     // Step 1: Request ERC-7715 permissions via MetaMask Flask

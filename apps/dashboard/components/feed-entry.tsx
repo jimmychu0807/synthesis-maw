@@ -303,6 +303,9 @@ function getEntryLabel(action: string): string {
     adversarial_check: "Safety Check",
     erc8004_register: "Identity",
     erc8004_register_failed: "Identity Failed",
+    avatar_generating: "Avatar",
+    avatar_generated: "Avatar",
+    avatar_generation_failed: "Avatar Failed",
     privacy_guarantee: "Privacy",
     worker_start: "Worker Start",
     worker_stop: "Worker Stop",
@@ -311,6 +314,7 @@ function getEntryLabel(action: string): string {
     judge_completed: "Judge",
     judge_warning: "Judge Warning",
     judge_failed: "Judge Failed",
+    delegation_allowance: "Allowance",
   };
   return labels[action] ?? action.replace(/_/g, " ");
 }

@@ -11,13 +11,14 @@
  * @module @veil/agent/agent-loop/swap
  */
 import type { Address, Hex } from "viem";
-import { createWalletClient, createPublicClient, parseUnits } from "viem";
+import { createWalletClient, createPublicClient, parseUnits, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { sepolia, base } from "viem/chains";
 
 import type { AgentConfig, AgentState } from "./index.js";
 import { CONTRACTS, env, rpcTransport } from "../config.js";
 import { pullNativeToken, pullErc20Token } from "../delegation/redeemer.js";
+import { getErc20Allowance, getNativeAllowance } from "../delegation/allowance.js";
 import { getQuote, createSwap, checkApproval } from "../uniswap/trading.js";
 import { signPermit2Data } from "../uniswap/permit2.js";
 import { logAction } from "../logging/agent-log.js";
@@ -132,6 +133,15 @@ export async function executeSwap(
   );
 
   if (isEthSell && ethPermission) {
+    // Pre-check: is there enough delegation allowance?
+    const sellAmountWei = parseUnits(swap.sellAmount, 18);
+    const ethAllowance = await getNativeAllowance(ethPermission.context as Hex, config.chainId);
+    if (ethAllowance && ethAllowance.availableAmount < sellAmountWei) {
+      const available = formatUnits(ethAllowance.availableAmount, 18);
+      throw new Error(
+        `Delegation allowance insufficient: need ${swap.sellAmount} ETH but only ${available} ETH available in current period`,
+      );
+    }
     try {
       const pullTx = await pullNativeToken({
         agentKey: config.agentKey,
@@ -158,6 +168,15 @@ export async function executeSwap(
       throw new Error(`Token pull failed: ${pullMsg}`);
     }
   } else if (!isEthSell && erc20Permission) {
+    // Pre-check: is there enough delegation allowance?
+    const sellAmountRawBigint = parseUnits(swap.sellAmount, decimals);
+    const erc20Allowance = await getErc20Allowance(erc20Permission.context as Hex, config.chainId);
+    if (erc20Allowance && erc20Allowance.availableAmount < sellAmountRawBigint) {
+      const available = formatUnits(erc20Allowance.availableAmount, decimals);
+      throw new Error(
+        `Delegation allowance insufficient: need ${swap.sellAmount} ${swap.sellToken} but only ${available} ${swap.sellToken} available in current period`,
+      );
+    }
     try {
       const pullTx = await pullErc20Token({
         agentKey: config.agentKey,
@@ -414,6 +433,7 @@ export async function executeSwap(
           },
           "Judge evaluation complete",
         );
+        state.lastCycleJudged = state.cycle;
         const judgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
         const judgeResult: Record<string, unknown> = {
           composite: result.composite,
@@ -528,6 +548,7 @@ export async function executeSwap(
           { composite: failureResult.composite, scores: failureResult.scores },
           "Judge failure evaluation complete",
         );
+        state.lastCycleJudged = state.cycle;
         const failureJudgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
         const failureJudgeResult: Record<string, unknown> = {
           outcome: "failed" as const,

@@ -26,11 +26,12 @@ vi.mock("../data/thegraph.js", () => ({ getPoolData: vi.fn() }));
 vi.mock("../delegation/compiler.js", () => ({ compileIntent: vi.fn() }));
 vi.mock("../delegation/audit.js", () => ({ generateDetailedAudit: vi.fn() }));
 vi.mock("../delegation/redeemer.js", () => ({ pullNativeToken: vi.fn(), pullErc20Token: vi.fn(), deploySmartAccountIfNeeded: vi.fn() }));
+vi.mock("../delegation/allowance.js", () => ({ getErc20Allowance: vi.fn().mockResolvedValue(null), getNativeAllowance: vi.fn().mockResolvedValue(null) }));
 vi.mock("../uniswap/trading.js", () => ({ getQuote: vi.fn(), createSwap: vi.fn() }));
 vi.mock("../logging/agent-log.js", () => ({ logAction: vi.fn(), logStart: vi.fn(), logStop: vi.fn() }));
 vi.mock("../logging/budget.js", () => ({ getBudgetTier: vi.fn().mockReturnValue("normal") }));
 vi.mock("../identity/erc8004.js", () => ({ registerAgent: vi.fn(), giveFeedback: vi.fn() }));
-vi.mock("../identity/judge.js", () => ({ evaluateSwap: vi.fn() }));
+vi.mock("../identity/judge.js", () => ({ evaluateSwap: vi.fn(), evaluateSwapFailure: vi.fn() }));
 vi.mock("../identity/evidence.js", () => ({ buildSwapEvidence: vi.fn(), storeEvidence: vi.fn() }));
 vi.mock("../logging/logger.js", () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
