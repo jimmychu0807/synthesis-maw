@@ -34,4 +34,4 @@ data/
 apps/dashboard/data/
 
 # Sponsor brand assets (large binaries, not code)
-brands/
+brands/bun.lock
