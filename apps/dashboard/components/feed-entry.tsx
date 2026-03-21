@@ -282,7 +282,9 @@ function getEntryLabel(action: string): string {
     swap_failed: "Swap Failed",
     cycle_error: "Cycle Error",
     safety_block: "Safety Block",
-    delegation_redeem_failed: "Delegation Failed",
+    token_pull: "Token Pull",
+    permissions_loaded: "Permissions",
+    permissions_missing: "Permissions Missing",
     permit2_approval: "Permit2 Approval",
     quote_received: "Quote",
     price_fetch: "Price",
@@ -294,8 +296,6 @@ function getEntryLabel(action: string): string {
     agent_start: "Agent Start",
     agent_stop: "Agent Stop",
     audit_report: "Audit Report",
-    delegation_created: "Delegation",
-    delegation_failed: "Delegation Failed",
     adversarial_check: "Safety Check",
     erc8004_register: "Identity",
     erc8004_register_failed: "Identity Failed",
@@ -307,7 +307,6 @@ function getEntryLabel(action: string): string {
     judge_completed: "Judge",
     judge_warning: "Judge Warning",
     judge_failed: "Judge Failed",
-    delegation_caveat_enforced: "Caveat Enforced",
   };
   return labels[action] ?? action.replace(/_/g, " ");
 }
@@ -478,11 +477,10 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   }
 
   // ── quote_received ─────────────────────────────────────────────────
-  // Layout: [Label] [input → output] [delegation badge] | [Uniswap] [runtime]
+  // Layout: [Label] [input → output] | [Uniswap] [runtime]
   if (entry.action === "quote_received" && res) {
     const input = r(res, "input") as { amount?: string } | undefined;
     const output = r(res, "output") as { amount?: string } | undefined;
-    const viaDelegation = r(res, "viaDelegation") as boolean | undefined;
     return (
       <EntryRow dot="blue">
         <EntryLine>
@@ -490,7 +488,6 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
           {input?.amount && output?.amount && (
             <DataValue>{input.amount} &rarr; {output.amount}</DataValue>
           )}
-          {viaDelegation && <Badge variant="positive">delegation</Badge>}
           <SponsorChip sponsor="uniswap" text="Uniswap" />
           <RuntimeTag ms={entry.duration_ms} />
         </EntryLine>
@@ -499,10 +496,9 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
   }
 
   // ── swap_executed ──────────────────────────────────────────────────
-  // Layout: [Label] [sell → buy] [delegation badge] | [Uniswap] [tx link]
+  // Layout: [Label] [sell → buy] | [Uniswap] [tx link]
   if (entry.action === "swap_executed" && res) {
     const txHash = r(res, "txHash") as string | undefined;
-    const viaDelegation = r(res, "viaDelegation") as boolean | undefined;
     return (
       <EntryRow dot="blue">
         <EntryLine>
@@ -511,7 +507,6 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
             {r(res, "sellAmount") as string} {r(res, "sellToken") as string}{" "}
             &rarr; {r(res, "buyToken") as string}
           </DataValue>
-          {viaDelegation && <Badge variant="positive">delegation</Badge>}
           <SponsorChip sponsor="uniswap" text="Uniswap" />
           <TxLink hash={txHash} />
         </EntryLine>
@@ -519,20 +514,20 @@ export const FeedEntry = memo(function FeedEntry({ entry }: FeedEntryProps) {
     );
   }
 
-  // ── delegation_created ─────────────────────────────────────────────
-  // Layout: [Label] [created (N caveats)] | [MetaMask] [tx link] [runtime]
-  if (entry.action === "delegation_created" && res) {
-    const txHash = r(res, "txHash") as string | undefined;
-    const caveatsCount = r(res, "caveatsCount") as number | undefined;
+  // ── permissions_loaded ─────────────────────────────────────────────
+  // Layout: [Label] [N permissions] | [MetaMask] [runtime]
+  if (entry.action === "permissions_loaded" && res) {
+    const permissionCount = r(res, "permissionCount") as number | undefined;
+    const types = r(res, "types") as string[] | undefined;
     return (
       <EntryRow dot="green">
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           <DataValue>
-            created{caveatsCount != null ? ` (${caveatsCount} caveat${caveatsCount !== 1 ? "s" : ""})` : ""}
+            {permissionCount ?? 0} permission{permissionCount !== 1 ? "s" : ""}
+            {types?.length ? ` (${types.join(", ")})` : ""}
           </DataValue>
           <SponsorChip sponsor="metamask" text="MetaMask ERC-7715 / ERC-7710" />
-          <TxLink hash={txHash} />
           <RuntimeTag ms={entry.duration_ms} />
         </EntryLine>
       </EntryRow>

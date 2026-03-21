@@ -76,8 +76,9 @@ test.describe.serial("SSE and Cookie Auth", () => {
       data: {
         intentText: "SSE test: 60/40 ETH/USDC, $100/day, 7 days",
         parsedIntent: VALID_PARSED_INTENT,
-        signedDelegation: "0xdeadbeef_sse_test",
-        delegatorSmartAccount: "0x0000000000000000000000000000000000SSE001",
+        permissions: "[{\"type\":\"native-token-periodic\",\"context\":\"0xdeadbeef_sse_test\",\"token\":\"ETH\"}]",
+        delegationManager: "0x0000000000000000000000000000000000SSE001",
+        dependencies: "[]",
       },
     });
 
