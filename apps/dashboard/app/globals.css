@@ -21,6 +21,9 @@
   --accent-danger-dim: rgba(239, 68, 68, 0.1);
   --accent-warning: #f59e0b;
   --accent-warning-dim: rgba(245, 158, 11, 0.1);
+
+  /* Standard easing — ease-out-quart for natural deceleration */
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 @theme inline {
@@ -60,6 +63,11 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Ease-out-quart — use on all data-driven transitions for consistent feel */
+.ease-out-data {
+  transition-timing-function: var(--ease-out);
+}
+
 /* Feed entry slide-in for SSE live entries */
 @keyframes feed-slide-in {
   from {
@@ -73,7 +81,7 @@ body {
 }
 
 .animate-feed-in {
-  animation: feed-slide-in 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: feed-slide-in 300ms var(--ease-out) both;
 }
 
 /* Cycle group expand/collapse height animation */
@@ -89,7 +97,7 @@ body {
 }
 
 .animate-expand {
-  animation: expand-down 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: expand-down 300ms var(--ease-out) both;
   overflow: hidden;
 }
 
@@ -106,7 +114,7 @@ body {
 }
 
 .animate-skeleton-in {
-  animation: skeleton-fade-in 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: skeleton-fade-in 400ms var(--ease-out) both;
 }
 
 /* Respect reduced motion preferences */

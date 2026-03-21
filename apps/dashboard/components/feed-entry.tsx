@@ -259,7 +259,7 @@ function renderDimensionScores(
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
                 <div className="h-1 flex-1 max-w-24 rounded-full bg-border overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-[width] duration-500 ${getScoreColor(score, "bg")}`}
+                    className={`h-full rounded-full transition-[width] duration-500 ease-out-data ${getScoreColor(score, "bg")}`}
                     style={{ width: `${score}%` }}
                   />
                 </div>

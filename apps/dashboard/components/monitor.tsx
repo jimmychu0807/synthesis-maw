@@ -372,7 +372,7 @@ function IntentDetailView({
                 <div className="flex items-center gap-2 mb-1.5">
                   <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">Target</p>
                   {currentDrift != null && (
-                    <span className={`font-mono text-xs tabular-nums transition-colors duration-300 ${currentDrift > 0.05 ? "text-accent-danger" : "text-accent-positive"}`}>
+                    <span className={`font-mono text-xs tabular-nums transition-colors duration-300 ease-out-data ${currentDrift > 0.05 ? "text-accent-danger" : "text-accent-positive"}`}>
                       <AnimatedNumber
                         value={currentDrift * 100}
                         format={(n) => `${n.toFixed(1)}% drift`}

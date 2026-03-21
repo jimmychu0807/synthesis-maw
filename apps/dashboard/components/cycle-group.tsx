@@ -45,7 +45,7 @@ export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGr
         >
           <span
             aria-hidden="true"
-            className={`transition-transform ${expanded ? "rotate-90" : ""}`}
+            className={`transition-transform duration-150 ease-out-data ${expanded ? "rotate-90" : ""}`}
           >
             ▶
           </span>
@@ -81,7 +81,7 @@ export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGr
       >
         <span
           aria-hidden="true"
-          className={`transition-transform ${expanded ? "rotate-90" : ""}`}
+          className={`transition-transform duration-150 ease-out-data ${expanded ? "rotate-90" : ""}`}
         >
           ▶
         </span>
