@@ -34,6 +34,43 @@ import {
 import { getScoreColor } from "@/lib/score-color";
 import type { ParsedIntent } from "@maw/common";
 
+/** Agent avatar with graceful fallback when the image doesn't exist. */
+const AgentAvatar = memo(function AgentAvatar({ intentId, size = 48 }: { intentId: string; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const src = `/api/intents/${intentId}/avatar.webp`;
+  const px = `${size / 4}rem`;
+  const iconSize = Math.round(size * 0.5);
+
+  if (failed) {
+    return (
+      <div
+        className="flex shrink-0 items-center justify-center rounded-lg bg-bg-primary"
+        style={{ width: px, height: px }}
+        aria-hidden="true"
+      >
+        <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" className="text-text-tertiary">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M6.5 19.5C7.5 16.5 9.5 15 12 15s4.5 1.5 5.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt="Agent avatar"
+      width={size}
+      height={size}
+      className="shrink-0 rounded-lg bg-bg-primary object-cover"
+      style={{ width: px, height: px }}
+      onError={() => setFailed(true)}
+    />
+  );
+});
+
 /** Wraps Audit with memoized audit report generation to avoid recomputing on every render. */
 function MemoizedAudit({ parsed, onViewMonitor }: { parsed: ParsedIntent; onViewMonitor: () => void }) {
   const audit = useMemo(() => generateAuditReport(parsed), [parsed]);
@@ -210,7 +247,7 @@ function IntentDetailView({
 
   const parsed = safeParseParsedIntent(data.parsedIntent);
   const ls = data.liveState as Record<string, unknown> | null;
-  const agentId = ls?.agentId as string | undefined;
+  const agentId = data.agentId ?? undefined;
   const currentAllocation = ls?.allocation as Record<string, number> | undefined;
   const currentTotalValue = ls?.totalValue as number | undefined;
   const currentDrift = ls?.drift as number | undefined;
@@ -233,6 +270,17 @@ function IntentDetailView({
           <Button onClick={() => setShowAudit(!showAudit)}>
             {showAudit ? "Hide Audit" : "View Audit"}
           </Button>
+          {agentId && (
+            <a
+              href={`https://testnet.8004scan.io/agents/base-sepolia/${agentId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="secondary">
+                <SponsorChip sponsor="protocol-labs" text="8004scan" />
+              </Button>
+            </a>
+          )}
           {isOwner && (
             <Button onClick={handleDownloadLogs} disabled={downloadingLogs}>
               {downloadingLogs ? "Downloading..." : "Download agent_log.jsonl"}
@@ -270,25 +318,30 @@ function IntentDetailView({
 
       {/* Intent text */}
       <Card className="px-5 py-3">
-        <p className="font-mono text-sm text-text-primary">{data.intentText}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-tertiary">
-          <Badge variant={STATUS_BADGE[data.status] ?? "warning"}>
-            {data.status}
-          </Badge>
-          <span className="font-mono">Ethereum Sepolia</span>
-          <span>Cycle {data.cycle}</span>
-          <span className="hidden sm:inline">Created {new Date(data.createdAt * 1000).toLocaleDateString()}</span>
-          <span>Expires {new Date(data.expiresAt * 1000).toLocaleDateString()}</span>
-          {agentId && (
-            <a
-              href={`https://8004agents.ai/base-sepolia/agent/${agentId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:underline transition-colors"
-            >
-              <SponsorChip sponsor="protocol-labs" text={`Agent #${agentId}`} />
-            </a>
-          )}
+        <div className="flex items-start gap-4">
+          <AgentAvatar intentId={intentId} size={28} />
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-sm text-text-primary">{data.intentText}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-tertiary">
+              <Badge variant={STATUS_BADGE[data.status] ?? "warning"}>
+                {data.status}
+              </Badge>
+              <span className="font-mono">Ethereum Sepolia</span>
+              <span>Cycle {data.cycle}</span>
+              <span className="hidden sm:inline">Created {new Date(data.createdAt * 1000).toLocaleDateString()}</span>
+              <span>Expires {new Date(data.expiresAt * 1000).toLocaleDateString()}</span>
+              {agentId && (
+                <a
+                  href={`https://testnet.8004scan.io/agents/base-sepolia/${agentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 hover:underline transition-colors"
+                >
+                  <SponsorChip sponsor="protocol-labs" text={`Agent #${agentId}`} />
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </Card>
 

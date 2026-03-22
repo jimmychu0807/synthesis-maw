@@ -17,6 +17,16 @@ import {
 } from "@maw/common";
 import { CONTRACTS } from "@/lib/contracts";
 
+/** Format a raw bigint amount to a human-readable string with token symbol. */
+function formatPeriodAmount(amount: bigint, token: "ETH" | "USDC"): string {
+  if (token === "USDC") {
+    const usd = Number(amount) / 1e6;
+    return `${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`;
+  }
+  const eth = Number(amount) / 1e18;
+  return `${eth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ETH`;
+}
+
 interface DelegationDetailsProps {
   parsed: ParsedIntent;
 }
@@ -72,7 +82,7 @@ export function DelegationDetails({ parsed }: DelegationDetailsProps) {
               <span className="text-xs text-text-secondary">ETH</span>
             </div>
             <p className="mt-1 font-mono text-xs text-text-tertiary">
-              Up to {computePeriodAmount(parsed.dailyBudgetUsd, "ETH")} wei per day
+              Up to {formatPeriodAmount(computePeriodAmount(parsed.dailyBudgetUsd, "ETH"), "ETH")} per day
             </p>
           </div>
         )}
@@ -89,7 +99,7 @@ export function DelegationDetails({ parsed }: DelegationDetailsProps) {
               </span>
             </div>
             <p className="mt-1 font-mono text-xs text-text-tertiary">
-              Up to {computePeriodAmount(parsed.dailyBudgetUsd, "USDC")} units per day
+              Up to {formatPeriodAmount(computePeriodAmount(parsed.dailyBudgetUsd, "USDC"), "USDC")} per day
             </p>
           </div>
         )}

@@ -90,6 +90,8 @@ export const IntentRecordSchema = z.object({
   lastCycleAt: z.number().nullable().optional(),
   workerStatus: z.string().optional(),
   queuePosition: z.number().nullable().optional(),
+  // ERC-8004 on-chain agent identity
+  agentId: z.string().nullable().optional(),
   // ERC-7715 permissions (from MetaMask Flask grant)
   permissions: z.string().nullable().optional(),
   delegationManager: z.string().nullable().optional(),

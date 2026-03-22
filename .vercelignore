@@ -1,12 +1,25 @@
-.worktrees
+# Build/cache
 .turbo
+.worktrees
 .playwright-mcp
+.pnpm-approved-builds
+.claude
+
+# Backend (not deployed to Vercel)
 packages/agent
+scripts
+
+# Runtime data
 data
-reference
-docs
 *.db
 *.db-wal
 *.db-shm
 *.jsonl
+
+# Docs & reference (not needed for frontend build)
+reference
+docs
+brands
+
+# Screenshots & misc
 vps-*.png

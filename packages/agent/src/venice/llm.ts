@@ -21,13 +21,30 @@ export interface LlmUsage {
   totalTokens: number;
 }
 
+// Per-model pricing (USD per 1M tokens) — used to estimate DIEM cost per request
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  "qwen3-5-9b": { input: 0.05, output: 0.15 },
+  "gemini-3-flash-preview": { input: 0.70, output: 3.75 },
+};
+
+/** Estimate DIEM cost from token counts and model pricing. 1 DIEM ≈ $1/day of credits. */
+export function estimateDiemCost(model: string, usage: LlmUsage): number | null {
+  const pricing = MODEL_PRICING[model];
+  if (!pricing) return null;
+  const inputCost = (usage.inputTokens / 1_000_000) * pricing.input;
+  const outputCost = (usage.outputTokens / 1_000_000) * pricing.output;
+  return inputCost + outputCost;
+}
+
 // Custom fetch that captures Venice billing headers
 const veniceFetch: typeof globalThis.fetch = async (input, init) => {
   const response = await globalThis.fetch(input, init);
+  const headers: Record<string, string> = {};
   const balanceUsd = response.headers.get("x-venice-balance-usd");
-  if (balanceUsd) {
-    updateBudget({ "x-venice-balance-usd": balanceUsd });
-  }
+  if (balanceUsd) headers["x-venice-balance-usd"] = balanceUsd;
+  const balanceDiem = response.headers.get("x-venice-balance-diem");
+  if (balanceDiem) headers["x-venice-balance-diem"] = balanceDiem;
+  if (Object.keys(headers).length > 0) updateBudget(headers);
   return response;
 };
 

@@ -20,6 +20,24 @@ const EXPLORER_URLS: Record<string, string> = {
   "base-sepolia": "https://sepolia.basescan.org/tx/",
 };
 
+/** Resolve a token address to a human-readable symbol and decimal count. */
+const TOKEN_MAP: Record<string, { symbol: string; decimals: number }> = {
+  "0x0000000000000000000000000000000000000000": { symbol: "ETH", decimals: 18 },
+  "0xfff9976782d46cc05630d1f6ebab18b2324d6b14": { symbol: "WETH", decimals: 18 },
+  "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238": { symbol: "USDC", decimals: 6 },
+};
+
+/** Format a raw token amount string to a human-readable value with symbol. */
+function formatTokenAmount(tokenAddress: string | undefined, rawAmount: string | undefined): string | null {
+  if (!tokenAddress || !rawAmount) return null;
+  const meta = TOKEN_MAP[tokenAddress.toLowerCase()];
+  if (!meta) return rawAmount;
+  const value = Number(rawAmount) / 10 ** meta.decimals;
+  if (value === 0) return `0 ${meta.symbol}`;
+  if (value < 0.0001) return `<0.0001 ${meta.symbol}`;
+  return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ${meta.symbol}`;
+}
+
 // ── Reusable sub-components ──────────────────────────────────────────────
 
 /** Status dot — vertically centered to the first line of text via flex centering. */
@@ -73,13 +91,41 @@ function RuntimeTag({ ms }: { ms: number | undefined }) {
   );
 }
 
-/** Venice DIEM token usage — shows total tokens with DIEM logo. */
-function TokenUsageTag({ usage, showSymbol = true }: { usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined; showSymbol?: boolean }) {
-  if (!usage?.totalTokens) return null;
+/** Timestamp display — shows HH:MM:SS in the entry metadata. */
+function Timestamp({ iso }: { iso: string | undefined }) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
   return (
-    <span className="inline-flex items-center gap-1 font-mono text-[10px] tabular-nums text-accent-secondary">
-      <Image src="/sponsors/diem.png" alt="DIEM" width={12} height={12} className="shrink-0 rounded-full" />
-      {usage.totalTokens.toLocaleString()}{showSymbol ? " DIEM" : ""}
+    <span className="flex h-5 shrink-0 items-center font-mono text-[10px] tabular-nums text-text-tertiary/40">
+      {time}
+    </span>
+  );
+}
+
+/** Venice DIEM cost — shows estimated DIEM consumed for the LLM call. */
+function TokenUsageTag({ usage }: { usage: { diemCost?: number | null; totalTokens?: number } | undefined; showSymbol?: boolean }) {
+  const diemCost = usage?.diemCost;
+  if (diemCost == null || diemCost <= 0) {
+    // Fallback to token count if no DIEM cost available
+    if (!usage?.totalTokens) return null;
+    return (
+      <span className="inline-flex items-center gap-1 font-mono text-[10px] tabular-nums text-text-tertiary">
+        {usage.totalTokens.toLocaleString()} tokens
+      </span>
+    );
+  }
+  // Format DIEM cost: show 4-6 decimal places for small amounts
+  const formatted = diemCost < 0.001
+    ? diemCost.toFixed(6)
+    : diemCost < 0.01
+      ? diemCost.toFixed(5)
+      : diemCost.toFixed(4);
+  return (
+    <span className="inline-flex items-center gap-1 font-mono text-[10px] leading-none tabular-nums text-accent-secondary">
+      <Image src="/sponsors/diem.png" alt="DIEM" width={14} height={14} className="block shrink-0 rounded-full" />
+      {formatted} DIEM
     </span>
   );
 }
@@ -87,7 +133,7 @@ function TokenUsageTag({ usage, showSymbol = true }: { usage: { inputTokens?: nu
 /**
  * Consistent entry row layout. All feed entries use this wrapper.
  *
- * Layout: [dot] [content]
+ * Layout: [timestamp] [dot] [content]
  * The dot is vertically centered to the first line height (20px for text-sm).
  * Padding is consistent: py-1.5 for all entries.
  */
@@ -95,13 +141,16 @@ function EntryRow({
   dot,
   children,
   isNew,
+  timestamp,
 }: {
   dot: "green" | "red" | "blue" | "gray";
   children: React.ReactNode;
   isNew?: boolean;
+  timestamp?: string;
 }) {
   return (
     <div className={`flex gap-2.5 py-1.5 text-sm ${isNew ? "animate-feed-in" : ""}`}>
+      <Timestamp iso={timestamp} />
       {/* Dot container: h-5 matches the line-height of text-sm (20px), centers the dot */}
       <div className="flex h-5 w-1.5 shrink-0 items-center">
         <StatusDot color={dot} />
@@ -135,7 +184,7 @@ function EntryLabel({ children }: { children: React.ReactNode }) {
 /** Secondary label — for routine/background actions (price fetch, portfolio check). */
 function EntryLabelMuted({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-text-tertiary">{children}</span>
+    <span className="text-text-secondary">{children}</span>
   );
 }
 
@@ -145,6 +194,22 @@ function DataValue({ children, className = "" }: { children: React.ReactNode; cl
     <span className={`font-mono tabular-nums text-text-secondary ${className}`}>
       {children}
     </span>
+  );
+}
+
+/** Avatar "View" link — shown for completed avatar entries. */
+function AvatarViewLink({ intentId }: { intentId: string }) {
+  const url = `/api/intents/${intentId}/avatar.webp`;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs text-accent-secondary hover:underline"
+    >
+      View
+      <span className="sr-only"> avatar (opens in new tab)</span>
+    </a>
   );
 }
 
@@ -307,9 +372,9 @@ function getEntryLabel(action: string): string {
     avatar_generated: "Avatar",
     avatar_generation_failed: "Avatar Failed",
     privacy_guarantee: "Privacy",
-    worker_start: "Worker Start",
-    worker_stop: "Worker Stop",
-    worker_error: "Worker Error",
+    worker_start: "Agent Started",
+    worker_stop: "Agent Stopped",
+    worker_error: "Agent Error",
     judge_started: "Judge",
     judge_completed: "Judge",
     judge_warning: "Judge Warning",
@@ -322,13 +387,16 @@ function getEntryLabel(action: string): string {
 // ── Main component ───────────────────────────────────────────────────────
 
 export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProps) {
+  // Hide internal-only entries that add noise without value
+  if (entry.action === "privacy_guarantee") return null;
+
   const isError = !!entry.error;
   const res = entry.result;
 
   // ── Error entries ──────────────────────────────────────────────────
   if (isError) {
     return (
-      <EntryRow dot="red" isNew={isNew}>
+      <EntryRow dot="red" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <span className="font-medium text-accent-danger">
             {getEntryLabel(entry.action)}
@@ -340,19 +408,14 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   }
 
   // ── price_fetch ────────────────────────────────────────────────────
-  // Layout: [Label] [ETH price] | [Venice] [model] [tokens] [runtime]
+  // Layout: [Label] [ETH price] | [CoinMarketCap] [runtime]
   if (entry.action === "price_fetch" && res) {
     const price = r(res, "price") as number | undefined;
-    const model = r(res, "model") as string | undefined;
-    const usage = r(res, "usage") as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
     return (
-      <EntryRow dot="gray" isNew={isNew}>
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {price != null && <DataValue>ETH {formatCurrency(price)}</DataValue>}
-          <SponsorChip sponsor="venice" text="Venice.ai" />
-          <ModelTag model={model} />
-          <TokenUsageTag usage={usage} />
           <RuntimeTag ms={entry.duration_ms} />
         </EntryLine>
       </EntryRow>
@@ -365,7 +428,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
     const totalUsdValue = r(res, "totalUsdValue") as number | undefined;
     const allocation = r(res, "allocation") as Record<string, number> | undefined;
     return (
-      <EntryRow dot="gray" isNew={isNew}>
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {totalUsdValue != null && <DataValue>{formatCurrency(totalUsdValue)}</DataValue>}
@@ -381,17 +444,25 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   }
 
   // ── pool_data_fetch ────────────────────────────────────────────────
-  // Layout: [Label] [pool count] | [Uniswap] [runtime]
+  // Layout: [Label] [pool count] [top pool detail] | [Uniswap] [runtime]
   if (entry.action === "pool_data_fetch" && res) {
     const poolCount = r(res, "poolCount") as number | undefined;
+    const topPool = r(res, "topPool") as { feeTier?: string; totalValueLockedUSD?: string } | undefined;
+    const topFeeBps = topPool?.feeTier ? Number(topPool.feeTier) / 100 : null;
+    const topTvl = topPool?.totalValueLockedUSD ? Number(topPool.totalValueLockedUSD) : null;
     return (
-      <EntryRow dot="gray" isNew={isNew}>
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {poolCount != null && (
             <DataValue>{poolCount} pool{poolCount !== 1 ? "s" : ""}</DataValue>
           )}
-          <SponsorChip sponsor="uniswap" text="Uniswap" />
+          {topFeeBps != null && topTvl != null && (
+            <span className="text-text-tertiary text-xs">
+              top: {topFeeBps}bps, TVL {formatCurrency(topTvl)}
+            </span>
+          )}
+          <SponsorChip sponsor="uniswap" text="The Graph" />
           <RuntimeTag ms={entry.duration_ms} />
         </EntryLine>
       </EntryRow>
@@ -403,7 +474,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   if (entry.action === "budget_check" && res) {
     const tier = r(res, "tier") as string | undefined;
     return (
-      <EntryRow dot="gray" isNew={isNew}>
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
           {tier && (
@@ -428,7 +499,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
       trade_limit_reached: "Daily trade limit reached",
     };
     return (
-      <EntryRow dot="red" isNew={isNew}>
+      <EntryRow dot="red" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <span className="font-medium text-accent-danger">{getEntryLabel(entry.action)}</span>
           {reason && (
@@ -453,7 +524,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
     const model = r(res, "model") as string | undefined;
     const usage = r(res, "usage") as { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
     return (
-      <EntryRow dot="green" isNew={isNew}>
+      <EntryRow dot="green" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           <Badge variant={shouldRebalance ? "positive" : "warning"}>
@@ -487,14 +558,16 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   // ── quote_received ─────────────────────────────────────────────────
   // Layout: [Label] [input → output] | [Uniswap] [runtime]
   if (entry.action === "quote_received" && res) {
-    const input = r(res, "input") as { amount?: string } | undefined;
-    const output = r(res, "output") as { amount?: string } | undefined;
+    const input = r(res, "input") as { token?: string; amount?: string } | undefined;
+    const output = r(res, "output") as { token?: string; amount?: string } | undefined;
+    const inputFormatted = formatTokenAmount(input?.token, input?.amount);
+    const outputFormatted = formatTokenAmount(output?.token, output?.amount);
     return (
-      <EntryRow dot="blue" isNew={isNew}>
+      <EntryRow dot="blue" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
-          {input?.amount && output?.amount && (
-            <DataValue>{input.amount} &rarr; {output.amount}</DataValue>
+          {inputFormatted && outputFormatted && (
+            <DataValue>{inputFormatted} &rarr; {outputFormatted}</DataValue>
           )}
           <SponsorChip sponsor="uniswap" text="Uniswap" />
           <RuntimeTag ms={entry.duration_ms} />
@@ -508,7 +581,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   if (entry.action === "swap_executed" && res) {
     const txHash = r(res, "txHash") as string | undefined;
     return (
-      <EntryRow dot="blue" isNew={isNew}>
+      <EntryRow dot="blue" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>Swap</EntryLabel>
           <DataValue>
@@ -523,12 +596,13 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   }
 
   // ── permissions_loaded ─────────────────────────────────────────────
-  // Layout: [Label] [N permissions] | [MetaMask] [runtime]
+  // Layout: [Label] [N permissions (types)] | [MetaMask] [DM link] [runtime]
   if (entry.action === "permissions_loaded" && res) {
     const permissionCount = r(res, "permissionCount") as number | undefined;
     const types = r(res, "types") as string[] | undefined;
+    const delegationManager = r(res, "delegationManager") as string | undefined;
     return (
-      <EntryRow dot="green" isNew={isNew}>
+      <EntryRow dot="green" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           <DataValue>
@@ -536,6 +610,17 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
             {types?.length ? ` (${types.join(", ")})` : ""}
           </DataValue>
           <SponsorChip sponsor="metamask" text="MetaMask ERC-7715 / ERC-7710" />
+          {delegationManager && (
+            <a
+              href={`https://sepolia.etherscan.io/address/${delegationManager}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-accent-secondary hover:underline"
+            >
+              DM {truncateHash(delegationManager)}
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>
+          )}
           <RuntimeTag ms={entry.duration_ms} />
         </EntryLine>
       </EntryRow>
@@ -546,7 +631,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   // Layout: [Label] | [Venice]
   if (entry.action === "judge_started") {
     return (
-      <EntryRow dot="gray" isNew={isNew}>
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabelMuted>Judge evaluation started</EntryLabelMuted>
           <SponsorChip sponsor="venice" text="Venice.ai" />
@@ -583,7 +668,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
     };
 
     return (
-      <EntryRow dot={outcome === "failed" ? "red" : "green"} isNew={isNew}>
+      <EntryRow dot={outcome === "failed" ? "red" : "green"} isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>
             Judge{outcome === "failed" ? " (Failed Swap)" : ""}
@@ -616,17 +701,17 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
   }
 
   // ── judge_warning ──────────────────────────────────────────────────
-  // Layout: [Label] [error text] | [Venice]
-  if (entry.action === "judge_warning" && res) {
-    const error = r(res, "error") as string | undefined;
+  // Layout: [Label] [warning text] | [ERC-8004]
+  if (entry.action === "judge_warning") {
+    const warningText = entry.error ?? (res ? r(res, "error") as string | undefined : undefined);
     return (
-      <EntryRow dot="red" isNew={isNew}>
+      <EntryRow dot="red" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
-          <span className="font-medium text-accent-danger">
+          <span className="font-medium text-accent-warning">
             {getEntryLabel(entry.action)}
           </span>
-          {error && <span className="text-text-tertiary text-xs">{error}</span>}
-          <SponsorChip sponsor="venice" text="Venice.ai" />
+          {warningText && <span className="text-text-tertiary text-xs">{warningText}</span>}
+          <SponsorChip sponsor="protocol-labs" text="ERC-8004" />
         </EntryLine>
       </EntryRow>
     );
@@ -640,7 +725,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
     const ethPrice = r(res, "ethPrice") as number | undefined;
     const allocation = r(res, "allocation") as Record<string, number> | undefined;
     return (
-      <EntryRow dot="green" isNew={isNew}>
+      <EntryRow dot="green" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           {totalValue != null && <DataValue>{formatCurrency(totalValue)}</DataValue>}
@@ -671,7 +756,7 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
     const agentId = r(res, "agentId") as string | undefined;
     const txHash = r(res, "txHash") as string | undefined;
     return (
-      <EntryRow dot="green" isNew={isNew}>
+      <EntryRow dot="green" isNew={isNew} timestamp={entry.timestamp}>
         <EntryLine>
           <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
           {agentId && <DataValue>Agent #{agentId}</DataValue>}
@@ -683,11 +768,135 @@ export const FeedEntry = memo(function FeedEntry({ entry, isNew }: FeedEntryProp
     );
   }
 
+  // ── token_pull ──────────────────────────────────────────────────────
+  // Layout: [Label] [amount token] | [MetaMask] [tx link] [runtime]
+  if (entry.action === "token_pull" && res) {
+    const pullAmount = r(res, "amount") as string | undefined;
+    const pullToken = r(res, "token") as string | undefined;
+    const pullTxHash = r(res, "txHash") as string | undefined;
+    return (
+      <EntryRow dot="blue" isNew={isNew} timestamp={entry.timestamp}>
+        <EntryLine>
+          <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
+          {pullAmount && pullToken && (
+            <DataValue>{pullAmount} {pullToken}</DataValue>
+          )}
+          <SponsorChip sponsor="metamask" text="ERC-7710" />
+          <TxLink hash={pullTxHash} />
+          <RuntimeTag ms={entry.duration_ms} />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
+  // ── permit2_approval ──────────────────────────────────────────────
+  // Layout: [Label] [token] | [Uniswap] [tx link] [runtime]
+  if (entry.action === "permit2_approval" && res) {
+    const permitToken = r(res, "token") as string | undefined;
+    const permitTxHash = r(res, "txHash") as string | undefined;
+    return (
+      <EntryRow dot="blue" isNew={isNew} timestamp={entry.timestamp}>
+        <EntryLine>
+          <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
+          {permitToken && <DataValue>{permitToken}</DataValue>}
+          <SponsorChip sponsor="uniswap" text="Permit2" />
+          <TxLink hash={permitTxHash} />
+          <RuntimeTag ms={entry.duration_ms} />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
+  // ── delegation_allowance ──────────────────────────────────────────
+  // Layout: [Label] [token: available] | [MetaMask] [runtime]
+  if (entry.action === "delegation_allowance" && res) {
+    return (
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
+        <EntryLine>
+          <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
+          <SponsorChip sponsor="metamask" text="ERC-7715" />
+          <RuntimeTag ms={entry.duration_ms} />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
+  // ── avatar_generating / avatar_generated ──────────────────────────
+  // Layout: [Label] [status] | [Venice] [link to avatar]
+  if ((entry.action === "avatar_generating" || entry.action === "avatar_generated") && res) {
+    const intentId = r(res, "intentId") as string | undefined;
+    const isComplete = entry.action === "avatar_generated";
+    return (
+      <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
+        <EntryLine>
+          <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
+          {!isComplete && (
+            <span className="text-text-tertiary text-xs">Generating...</span>
+          )}
+          <SponsorChip sponsor="venice" text="Venice.ai" />
+          {isComplete && intentId && (
+            <AvatarViewLink intentId={intentId} />
+          )}
+          <RuntimeTag ms={entry.duration_ms} />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
+  // ── audit_report ────────────────────────────────────────────────────
+  // Layout: [Label] [allows/prevents counts] | [runtime]
+  if (entry.action === "audit_report" && res) {
+    const allows = r(res, "allows") as string[] | undefined;
+    const prevents = r(res, "prevents") as string[] | undefined;
+    const warnings = r(res, "warnings") as string[] | undefined;
+    return (
+      <EntryRow dot="green" isNew={isNew} timestamp={entry.timestamp}>
+        <EntryLine>
+          <EntryLabel>{getEntryLabel(entry.action)}</EntryLabel>
+          <span className="text-text-tertiary text-xs">
+            {allows?.length ?? 0} allows, {prevents?.length ?? 0} prevents
+            {warnings && warnings.length > 0 && (
+              <span className="text-accent-warning ml-1">{warnings.length} warning{warnings.length !== 1 ? "s" : ""}</span>
+            )}
+          </span>
+          <SponsorChip sponsor="metamask" text="MetaMask" />
+          <RuntimeTag ms={entry.duration_ms} />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
+  // ── worker_start / worker_stop ──────────────────────────────────────
+  // Layout: [Label] [wallet] | [runtime]
+  if ((entry.action === "worker_start" || entry.action === "worker_stop") && res) {
+    const wallet = r(res, "wallet") as string | undefined;
+    const isStart = entry.action === "worker_start";
+    return (
+      <EntryRow dot={isStart ? "green" : "gray"} isNew={isNew} timestamp={entry.timestamp}>
+        <EntryLine>
+          <EntryLabel>{isStart ? "Agent Started" : "Agent Stopped"}</EntryLabel>
+          {wallet && (
+            <a
+              href={`https://sepolia.etherscan.io/address/${wallet}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-accent-secondary hover:underline"
+            >
+              {truncateHash(wallet)}
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>
+          )}
+          <RuntimeTag ms={entry.duration_ms} />
+        </EntryLine>
+      </EntryRow>
+    );
+  }
+
   // ── Default: fallback for any unhandled entry type ─────────────────
   const fallbackTxHash = res ? (r(res, "txHash") as string | undefined) : undefined;
 
   return (
-    <EntryRow dot="gray" isNew={isNew}>
+    <EntryRow dot="gray" isNew={isNew} timestamp={entry.timestamp}>
       <EntryLine>
         <EntryLabelMuted>{getEntryLabel(entry.action)}</EntryLabelMuted>
         <TxLink hash={fallbackTxHash} />

@@ -160,6 +160,27 @@ function computeProgress(entries: AgentLogEntry[]): CycleProgress {
 }
 
 // ---------------------------------------------------------------------------
+// Init group progress
+// ---------------------------------------------------------------------------
+//
+// Init entries (cycle === null) include a mix of blocking and non-blocking
+// actions. Only blocking steps count toward progress so the init group shows
+// as "complete" once the agent enters its main loop — even if cosmetic
+// fire-and-forget tasks (avatar generation) haven't resolved yet.
+
+/** Actions that are hidden in the UI and shouldn't count toward init progress. */
+const INIT_EXCLUDED = new Set([
+  "privacy_guarantee",    // hidden in FeedEntry
+]);
+
+function computeInitProgress(entries: AgentLogEntry[]): CycleProgress {
+  const visible = entries.filter((e) => !INIT_EXCLUDED.has(e.action));
+  const succeeded = visible.filter((e) => !e.error).length;
+  const total = visible.length;
+  return { completed: succeeded, total, pendingLabel: null };
+}
+
+// ---------------------------------------------------------------------------
 // Snapshot extraction
 // ---------------------------------------------------------------------------
 
@@ -226,7 +247,7 @@ export function groupFeedByCycle(feed: AgentLogEntry[]): CycleGroup[] {
       isComplete: entries.some((e) => e.action === "cycle_complete" || e.action === "cycle_error"),
       progress: key !== null
         ? computeProgress(entries)
-        : { completed: entries.length, total: entries.length, pendingLabel: null },
+        : computeInitProgress(entries),
     };
   });
 }

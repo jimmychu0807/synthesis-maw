@@ -241,6 +241,10 @@ app.use(
   "/maw-agent.svg",
   serveStatic({ root: DASHBOARD_DIST }),
 );
+app.use(
+  "/sponsors/*",
+  serveStatic({ root: DASHBOARD_DIST }),
+);
 
 // SPA fallback — serve index.html for all non-API routes.
 // Read once at mount time to avoid blocking readFileSync on every request.

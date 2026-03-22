@@ -462,14 +462,16 @@ describe("progress tracking", () => {
 
   // ── Init group progress ─────────────────────────────────────────────
 
-  it("init group progress uses raw entry count", () => {
+  it("init group progress excludes hidden entries", () => {
     const feed: AgentLogEntry[] = [
       entry({ action: "privacy_guarantee", sequence: 0 }),
       entry({ action: "permissions_loaded", sequence: 1 }),
       entry({ action: "audit_report", sequence: 2 }),
+      entry({ action: "avatar_generated", sequence: 3 }),
     ];
     const groups = groupFeedByCycle(feed);
     expect(groups[0].cycle).toBeNull();
+    // privacy_guarantee is excluded from count (hidden in FeedEntry)
     expect(groups[0].progress).toEqual({
       completed: 3,
       total: 3,

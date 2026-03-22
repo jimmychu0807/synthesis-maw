@@ -11,7 +11,7 @@
  * @module @maw/agent/agent-loop/swap
  */
 import type { Address, Hex } from "viem";
-import { createWalletClient, createPublicClient, parseUnits, formatUnits } from "viem";
+import { createWalletClient, createPublicClient, parseUnits, formatUnits, erc20Abi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { sepolia, base } from "viem/chains";
 
@@ -124,6 +124,38 @@ export async function executeSwap(
   const isEthSell = swap.sellToken.toUpperCase() === "ETH";
 
   // --- Step 1: Pull tokens from user's smart account via ERC-7710 ---
+  // First check if the agent EOA already holds enough of the sell token
+  // (e.g. from a previous cycle where the pull succeeded but the swap failed).
+  const sellAmountRawBigint = parseUnits(swap.sellAmount, decimals);
+  let agentAlreadyHoldsEnough = false;
+
+  try {
+    const preCheckClient = createPublicClient({ chain, transport: rpcTransport(chain) });
+    if (isEthSell) {
+      const ethBal = await preCheckClient.getBalance({ address: agentAddress });
+      // Reserve 0.01 ETH for gas
+      const reserveForGas = parseUnits("0.01", 18);
+      if (ethBal > sellAmountRawBigint + reserveForGas) {
+        agentAlreadyHoldsEnough = true;
+        logger.info(`Agent EOA already holds ${formatUnits(ethBal, 18)} ETH — skipping delegation pull`);
+      }
+    } else {
+      const erc20Bal = await preCheckClient.readContract({
+        address: sellTokenAddress,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [agentAddress],
+      });
+      if (erc20Bal >= sellAmountRawBigint) {
+        agentAlreadyHoldsEnough = true;
+        logger.info(`Agent EOA already holds ${formatUnits(erc20Bal, decimals)} ${swap.sellToken} — skipping delegation pull`);
+      }
+    }
+  } catch {
+    // Balance check is best-effort — proceed with pull if it fails
+    logger.debug("Pre-pull balance check failed, proceeding with delegation pull");
+  }
+
   const ethPermission = state.permissions.find(
     (p) => p.type === "native-token-periodic" || p.type === "native-token-stream",
   );
@@ -132,7 +164,9 @@ export async function executeSwap(
       p.token.toUpperCase() === swap.sellToken.toUpperCase(),
   );
 
-  if (isEthSell && ethPermission) {
+  if (agentAlreadyHoldsEnough) {
+    logger.info("Skipping delegation pull — agent EOA already has sufficient balance (likely from a prior failed swap)");
+  } else if (isEthSell && ethPermission) {
     // Pre-check: is there enough delegation allowance?
     const sellAmountWei = parseUnits(swap.sellAmount, 18);
     const ethAllowance = await getNativeAllowance(ethPermission.context as Hex, config.chainId);
@@ -169,7 +203,6 @@ export async function executeSwap(
     }
   } else if (!isEthSell && erc20Permission) {
     // Pre-check: is there enough delegation allowance?
-    const sellAmountRawBigint = parseUnits(swap.sellAmount, decimals);
     const erc20Allowance = await getErc20Allowance(erc20Permission.context as Hex, config.chainId);
     if (erc20Allowance && erc20Allowance.availableAmount < sellAmountRawBigint) {
       const available = formatUnits(erc20Allowance.availableAmount, decimals);

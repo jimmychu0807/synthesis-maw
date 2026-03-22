@@ -13,7 +13,7 @@ import { sepolia, base } from "viem/chains";
 import { env } from "../config.js";
 import type { IntentParse } from "../venice/schemas.js";
 import { RebalanceDecisionSchema } from "../venice/schemas.js";
-import { reasoningLlm, fastLlm, FAST_MODEL, RESEARCH_MODEL, REASONING_MODEL } from "../venice/llm.js";
+import { reasoningLlm, fastLlm, FAST_MODEL, RESEARCH_MODEL, REASONING_MODEL, estimateDiemCost } from "../venice/llm.js";
 import { detectAdversarialIntent } from "@maw/common";
 import { compileIntent } from "../delegation/compiler.js";
 import { generateDetailedAudit, type DetailedAuditReport } from "../delegation/audit.js";
@@ -161,6 +161,35 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
     result: { provider: "venice.ai", dataRetention: "none", modelsUsed: [FAST_MODEL, RESEARCH_MODEL, REASONING_MODEL] },
   });
 
+  // Generate unique avatar image for this agent.
+  // Awaited so the avatar is ready before ERC-8004 registration — identity.json
+  // serves the avatar URL, and 8004scan fetches it immediately after registration.
+  if (config.intentId) {
+    const existingAvatar = avatarPath(config.intentId);
+    if (existsSync(existingAvatar)) {
+      logger.info({ intentId: config.intentId }, "Agent avatar already exists, skipping generation");
+    } else {
+      config.intentLogger?.log("avatar_generating", {
+        tool: "venice-image",
+        result: { intentId: config.intentId, model: "nano-banana-2" },
+      });
+      try {
+        await generateAgentAvatar(config.intentId, config.intent);
+        logger.info({ intentId: config.intentId }, "Agent avatar generated");
+        config.intentLogger?.log("avatar_generated", {
+          tool: "venice-image",
+          result: { intentId: config.intentId, model: "nano-banana-2" },
+        });
+      } catch (err) {
+        logger.warn({ err, intentId: config.intentId }, "Avatar generation failed — continuing with fallback SVG");
+        config.intentLogger?.log("avatar_generation_failed", {
+          tool: "venice-image",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
   // Check for existing agentId (persisted from previous run)
   if (config.existingAgentId != null) {
     state.agentId = config.existingAgentId;
@@ -206,38 +235,6 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
         tool: "erc8004-identity",
         error: err instanceof Error ? err.message : String(err),
       });
-    }
-  }
-
-  // Generate unique avatar image for this agent — runs in background, never blocks the main loop.
-  if (state.agentId != null && config.intentId) {
-    const existingAvatar = avatarPath(config.intentId);
-    if (existsSync(existingAvatar)) {
-      logger.info({ intentId: config.intentId }, "Agent avatar already exists, skipping generation");
-    } else {
-      const avatarIntentId = config.intentId;
-      const avatarIntent = config.intent;
-      const avatarLogger = config.intentLogger;
-      avatarLogger?.log("avatar_generating", {
-        tool: "venice-image",
-        result: { intentId: avatarIntentId, model: "nano-banana-2" },
-      });
-      // Fire-and-forget: don't await — avatar gen is nice-to-have, not blocking
-      generateAgentAvatar(avatarIntentId, avatarIntent)
-        .then(() => {
-          logger.info({ intentId: avatarIntentId }, "Agent avatar generated");
-          avatarLogger?.log("avatar_generated", {
-            tool: "venice-image",
-            result: { intentId: avatarIntentId, model: "nano-banana-2" },
-          });
-        })
-        .catch((err: unknown) => {
-          logger.warn({ err, intentId: avatarIntentId }, "Avatar generation failed — continuing with fallback SVG");
-          avatarLogger?.log("avatar_generation_failed", {
-            tool: "venice-image",
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
     }
   }
 
@@ -308,6 +305,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
     result: {
       permissionCount: state.permissions.length,
       types: state.permissions.map((p) => p.type),
+      delegationManager: state.delegationManager,
     },
   });
   logger.info(
@@ -562,16 +560,26 @@ Size the trade to make meaningful progress on drift while staying well within th
   }
   const decision = parseResult.data;
 
+  const decisionModel = market.budgetTier === "normal" ? REASONING_MODEL : FAST_MODEL;
   const meta = rawResponse.raw instanceof AIMessage ? rawResponse.raw.usage_metadata : undefined;
   const usage = meta
-    ? { inputTokens: meta.input_tokens, outputTokens: meta.output_tokens, totalTokens: meta.total_tokens }
+    ? {
+        inputTokens: meta.input_tokens,
+        outputTokens: meta.output_tokens,
+        totalTokens: meta.total_tokens,
+        diemCost: estimateDiemCost(decisionModel, {
+          inputTokens: meta.input_tokens,
+          outputTokens: meta.output_tokens,
+          totalTokens: meta.total_tokens,
+        }),
+      }
     : undefined;
 
   const decisionResult: Record<string, unknown> = {
     shouldRebalance: decision.shouldRebalance,
     reasoning: decision.reasoning,
     marketContext: decision.marketContext,
-    model: market.budgetTier === "normal" ? REASONING_MODEL : FAST_MODEL,
+    model: decisionModel,
   };
   if (usage) decisionResult.usage = usage;
 

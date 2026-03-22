@@ -29,7 +29,7 @@ import {
   submitValidationResponse,
   giveFeedback,
 } from "./erc8004.js";
-import { reasoningLlm, fastLlm, FAST_MODEL, REASONING_MODEL } from "../venice/llm.js";
+import { reasoningLlm, fastLlm, FAST_MODEL, REASONING_MODEL, estimateDiemCost } from "../venice/llm.js";
 import { env } from "../config.js";
 import { logger } from "../logging/logger.js";
 
@@ -154,6 +154,7 @@ export async function evaluateSwap(
   const schema = buildEvaluationSchema(dimensions);
   const { systemPrompt, userPrompt } = buildJudgePrompt(dimensions, evidence);
 
+  const judgeModel = budgetCritical ? FAST_MODEL : REASONING_MODEL;
   const llm = budgetCritical ? fastLlm : reasoningLlm;
   const structuredLlm = llm.withStructuredOutput(schema, { includeRaw: true });
   const llmResponse = await structuredLlm.invoke([
@@ -170,7 +171,16 @@ export async function evaluateSwap(
 
   const llmMeta = llmResponse.raw instanceof AIMessage ? llmResponse.raw.usage_metadata : undefined;
   const llmUsage = llmMeta
-    ? { inputTokens: llmMeta.input_tokens, outputTokens: llmMeta.output_tokens, totalTokens: llmMeta.total_tokens }
+    ? {
+        inputTokens: llmMeta.input_tokens,
+        outputTokens: llmMeta.output_tokens,
+        totalTokens: llmMeta.total_tokens,
+        diemCost: estimateDiemCost(judgeModel, {
+          inputTokens: llmMeta.input_tokens,
+          outputTokens: llmMeta.output_tokens,
+          totalTokens: llmMeta.total_tokens,
+        }),
+      }
     : undefined;
 
   // 4. Extract scores and reasonings (fields are guaranteed by Zod schema validation above)
@@ -347,6 +357,7 @@ export async function evaluateSwapFailure(
   const schema = buildEvaluationSchema(dimensions);
   const { systemPrompt, userPrompt } = buildJudgePrompt(dimensions, evidence);
 
+  const failJudgeModel = budgetCritical ? FAST_MODEL : REASONING_MODEL;
   const llm = budgetCritical ? fastLlm : reasoningLlm;
   const structuredLlm = llm.withStructuredOutput(schema, { includeRaw: true });
   const llmResponse = await structuredLlm.invoke([
@@ -363,7 +374,16 @@ export async function evaluateSwapFailure(
 
   const llmMeta = llmResponse.raw instanceof AIMessage ? llmResponse.raw.usage_metadata : undefined;
   const llmUsage = llmMeta
-    ? { inputTokens: llmMeta.input_tokens, outputTokens: llmMeta.output_tokens, totalTokens: llmMeta.total_tokens }
+    ? {
+        inputTokens: llmMeta.input_tokens,
+        outputTokens: llmMeta.output_tokens,
+        totalTokens: llmMeta.total_tokens,
+        diemCost: estimateDiemCost(failJudgeModel, {
+          inputTokens: llmMeta.input_tokens,
+          outputTokens: llmMeta.output_tokens,
+          totalTokens: llmMeta.total_tokens,
+        }),
+      }
     : undefined;
 
   // 4. Extract scores and reasonings

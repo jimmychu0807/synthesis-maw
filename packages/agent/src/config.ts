@@ -142,16 +142,18 @@ const CHAIN_ID_TO_ENV: Record<number, ChainEnv> = {
   8453: "base",
 };
 
+const RPC_OPTIONS = { retryCount: 3, retryDelay: 1000, timeout: 30_000 } as const;
+
 export function rpcTransport(chainOrEnv: ChainEnv | Chain): Transport {
   if (typeof chainOrEnv === "string") {
     return fallback([
-      http(RPC_URLS[chainOrEnv]),
-      http(FALLBACK_RPC_URLS[chainOrEnv]),
+      http(RPC_URLS[chainOrEnv], RPC_OPTIONS),
+      http(FALLBACK_RPC_URLS[chainOrEnv], RPC_OPTIONS),
     ]);
   }
   const envKey = CHAIN_ID_TO_ENV[chainOrEnv.id];
   if (!envKey) {
-    return http();
+    return http(undefined, RPC_OPTIONS);
   }
-  return fallback([http(RPC_URLS[envKey]), http(FALLBACK_RPC_URLS[envKey])]);
+  return fallback([http(RPC_URLS[envKey], RPC_OPTIONS), http(FALLBACK_RPC_URLS[envKey], RPC_OPTIONS)]);
 }

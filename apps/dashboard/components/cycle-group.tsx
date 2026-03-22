@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { CycleGroup as CycleGroupData } from "@/lib/group-feed";
 import { FeedEntry } from "./feed-entry";
+import { SponsorChip } from "./sponsor-chip";
+import { Badge } from "./ui/badge";
 import { formatCurrency, formatPercentage, formatAllocationSummary } from "@maw/common";
 import { Spinner } from "./ui/icons";
 
@@ -28,8 +30,7 @@ export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGr
 
   // Init group (no cycle number)
   if (group.cycle === null) {
-    const initTotal = group.entries.length;
-    const initSuccess = group.entries.filter((e) => !e.error).length;
+    const { completed: initSuccess, total: initTotal } = group.progress;
     const initColor = initTotal === 0
       ? "text-text-tertiary"
       : initSuccess === initTotal
@@ -71,6 +72,25 @@ export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGr
     ? formatAllocationSummary(snap.allocation)
     : null;
 
+  // Determine if Venice made a decision in this cycle
+  const veniceDecided = group.entries.some((e) => e.action === "rebalance_decision");
+
+  // Cycle outcome badge
+  let outcomeLabel: string | null = null;
+  let outcomeVariant: "positive" | "danger" | "warning" | null = null;
+  if (group.isComplete && group.cycle !== null) {
+    if (group.didRebalance) {
+      outcomeLabel = "Rebalanced";
+      outcomeVariant = "positive";
+    } else if (group.wasSafetyBlocked) {
+      outcomeLabel = "Blocked";
+      outcomeVariant = "warning";
+    } else {
+      outcomeLabel = "Hold";
+      outcomeVariant = null;
+    }
+  }
+
   return (
     <div className="border-b border-border-subtle pb-2">
       <button
@@ -89,24 +109,32 @@ export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGr
           Cycle {group.cycle}
         </span>
         {!group.isComplete && (
-          <span className="flex items-center gap-1.5 text-accent-positive">
+          <span className="flex items-center gap-1.5 text-xs text-accent-positive">
             <Spinner className="h-3 w-3 animate-spin" />
             {pendingLabel && (
               <span className="text-text-tertiary">{pendingLabel}</span>
             )}
           </span>
         )}
+        {outcomeLabel && (
+          outcomeVariant
+            ? <Badge variant={outcomeVariant}>{outcomeLabel}</Badge>
+            : <span className="text-xs text-text-tertiary">{outcomeLabel}</span>
+        )}
+        {veniceDecided && (
+          <SponsorChip sponsor="venice" text="Venice.ai" />
+        )}
         {snap && (
           <>
-            <span className="font-mono tabular-nums">
+            <span className="text-xs font-mono tabular-nums text-text-secondary">
               {formatCurrency(snap.totalValue)}
             </span>
             <span
-              className={`font-mono tabular-nums ${driftPct != null && driftPct > 5 ? "text-accent-danger" : "text-accent-positive"}`}
+              className={`text-xs font-mono tabular-nums ${driftPct != null && driftPct > 5 ? "text-accent-danger" : "text-accent-positive"}`}
             >
               {driftPct != null ? formatPercentage(snap.drift) : "---"}
             </span>
-            <span className="hidden text-text-tertiary sm:inline">
+            <span className="hidden text-xs font-mono tabular-nums text-text-tertiary sm:inline">
               {allocSummary}
             </span>
           </>
@@ -117,12 +145,7 @@ export function CycleGroup({ group, defaultExpanded = false, liveSeqs }: CycleGr
             <span className="sr-only">Error in cycle</span>
           </>
         )}
-        {group.isComplete && !group.didRebalance && group.cycle !== null && (
-          <span className={group.wasSafetyBlocked ? "text-accent-warning" : "text-text-tertiary"}>
-            {group.wasSafetyBlocked ? "blocked" : "hold"}
-          </span>
-        )}
-        <span className={`ml-auto font-mono tabular-nums ${stepCountColor}`}>
+        <span className={`ml-auto text-xs font-mono tabular-nums ${stepCountColor}`}>
           {completed}/{total}
         </span>
       </button>
