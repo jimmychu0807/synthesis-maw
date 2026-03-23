@@ -467,6 +467,26 @@ export async function executeSwap(
           "Judge evaluation complete",
         );
         state.lastCycleJudged = state.cycle;
+        // Persist judge scores to DB for feedback loop
+        if (config.repo && config.intentId) {
+          try {
+            config.repo.insertSwapScore({
+              intentId: config.intentId,
+              cycle: currentCycle,
+              composite: result.composite,
+              decisionScore: result.scores["decision-quality"] ?? 0,
+              decisionReasoning: result.reasonings["decision-quality"] ?? "",
+              executionScore: result.scores["execution-quality"] ?? 0,
+              executionReasoning: result.reasonings["execution-quality"] ?? "",
+              goalScore: result.scores["goal-progress"] ?? 0,
+              goalReasoning: result.reasonings["goal-progress"] ?? "",
+              outcome: "success",
+              createdAt: new Date().toISOString(),
+            });
+          } catch (scoreErr) {
+            logger.warn({ err: scoreErr }, "Failed to persist swap score to DB");
+          }
+        }
         const judgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
         const judgeResult: Record<string, unknown> = {
           composite: result.composite,
@@ -582,6 +602,26 @@ export async function executeSwap(
           "Judge failure evaluation complete",
         );
         state.lastCycleJudged = state.cycle;
+        // Persist judge scores to DB for feedback loop
+        if (config.repo && config.intentId) {
+          try {
+            config.repo.insertSwapScore({
+              intentId: config.intentId,
+              cycle: state.cycle,
+              composite: failureResult.composite,
+              decisionScore: failureResult.scores["decision-quality"] ?? 0,
+              decisionReasoning: failureResult.reasonings["decision-quality"] ?? "",
+              executionScore: failureResult.scores["execution-quality"] ?? 0,
+              executionReasoning: failureResult.reasonings["execution-quality"] ?? "",
+              goalScore: failureResult.scores["goal-progress"] ?? 0,
+              goalReasoning: failureResult.reasonings["goal-progress"] ?? "",
+              outcome: "failed",
+              createdAt: new Date().toISOString(),
+            });
+          } catch (scoreErr) {
+            logger.warn({ err: scoreErr }, "Failed to persist failure swap score to DB");
+          }
+        }
         const failureJudgeModel = state.budgetTier === "critical" ? FAST_MODEL : REASONING_MODEL;
         const failureJudgeResult: Record<string, unknown> = {
           outcome: "failed" as const,

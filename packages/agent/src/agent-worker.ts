@@ -113,6 +113,7 @@ export class DefaultAgentWorker implements AgentWorker {
       initialCycle: intent.cycle,
       initialTradesExecuted: intent.tradesExecuted,
       initialTotalSpentUsd: intent.totalSpentUsd,
+      repo: this.deps.repo,
       onAgentIdRegistered: (agentId: string) => {
         this.deps.repo.updateIntentAgentId(this.intentId, agentId);
       },

@@ -6,5 +6,7 @@ export {
   type SwapInsert,
   type SwapSelect,
   type NonceSelect,
+  type SwapScoreInsert,
+  type SwapScoreSelect,
 } from "./repository.js";
 export * from "./schema.js";

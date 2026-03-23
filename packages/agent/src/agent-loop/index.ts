@@ -69,6 +69,8 @@ export interface AgentConfig {
   initialTradesExecuted?: number;
   /** Resume from a previous total spent */
   initialTotalSpentUsd?: number;
+  /** Repository for reading/writing swap scores (feedback loop) */
+  repo?: import("../db/repository.js").IntentRepository;
 }
 
 export interface AgentState {
@@ -491,6 +493,29 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
 // Rebalance decision via Venice
 // ---------------------------------------------------------------------------
 
+/**
+ * Format recent judge scores into a prompt section for the Venice rebalance LLM.
+ * Returns empty string if no scores exist (first cycle).
+ * Exported for testing.
+ */
+export function formatFeedbackPrompt(
+  scores: import("../db/repository.js").SwapScoreSelect[],
+): string {
+  if (scores.length === 0) return "";
+
+  const entries = scores.map((s) => {
+    const lines = [
+      `Cycle ${s.cycle} (${s.outcome}) -- Composite: ${Math.round(s.composite)}/100`,
+      `  Decision Quality (40% weight): ${s.decisionScore} -- "${s.decisionReasoning}"`,
+      `  Execution Quality (30% weight): ${s.executionScore} -- "${s.executionReasoning}"`,
+      `  Goal Progress (30% weight): ${s.goalScore} -- "${s.goalReasoning}"`,
+    ];
+    return lines.join("\n");
+  });
+
+  return `\nPAST PERFORMANCE FEEDBACK (from independent Venice judge):\n\n${entries.join("\n\n")}\n\nUse this feedback to improve your decisions. If execution quality is consistently low, prefer smaller trade sizes for better fills. If goal progress is low, reconsider trade direction.`;
+}
+
 async function getRebalanceDecision(
   config: AgentConfig,
   state: AgentState,
@@ -498,6 +523,17 @@ async function getRebalanceDecision(
   allowances?: Record<string, { available: bigint; decimals: number }>,
 ): Promise<{ shouldRebalance: boolean; reasoning: string; marketContext?: string | null; targetSwap?: { sellToken: string; buyToken: string; sellAmount: string; maxSlippage: string } | null }> {
   logger.info("Drift detected. Consulting Venice for rebalance decision...");
+
+  // Query recent judge feedback for self-correction
+  let feedbackSection = "";
+  if (config.repo && config.intentId) {
+    try {
+      const recentScores = config.repo.getRecentScores(config.intentId, 5);
+      feedbackSection = formatFeedbackPrompt(recentScores);
+    } catch (err) {
+      logger.warn({ err }, "Failed to query recent scores for feedback prompt");
+    }
+  }
 
   const llmForReasoning = market.budgetTier === "normal" ? reasoningLlm : fastLlm;
   const startReasoning = Date.now();
@@ -539,6 +575,7 @@ ${allowances && Object.keys(allowances).length > 0
         .join("\n")
     }\nThe on-chain enforcer will revert any transaction exceeding these limits.`
   : ""}
+${feedbackSection}
 Size the trade to make meaningful progress on drift while staying well within these limits.`,
     },
     {

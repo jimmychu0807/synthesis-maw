@@ -41,7 +41,7 @@ vi.mock("../utils/retry.js", () => ({
   withRetry: vi.fn((fn: () => Promise<unknown>) => fn()),
 }));
 
-import { calculateDrift, resolveTokenAddress } from "../agent-loop/index.js";
+import { calculateDrift, resolveTokenAddress, formatFeedbackPrompt } from "../agent-loop/index.js";
 
 describe("Agent Loop - resolveTokenAddress", () => {
   it("returns NATIVE_ETH for ETH on Sepolia", () => {
@@ -142,5 +142,60 @@ describe("Agent Loop - drift calculation", () => {
       { ETH: 0.6, USDC: 0.4 },
     );
     expect(result.maxDrift).toBeGreaterThan(threshold);
+  });
+});
+
+describe("Agent Loop - formatFeedbackPrompt", () => {
+  it("returns empty string when no scores exist", () => {
+    expect(formatFeedbackPrompt([])).toBe("");
+  });
+
+  it("formats a single score entry", () => {
+    const scores = [{
+      id: 1,
+      intentId: "test",
+      swapId: null,
+      cycle: 3,
+      composite: 75.5,
+      decisionScore: 80,
+      decisionReasoning: "Good direction.",
+      executionScore: 65,
+      executionReasoning: "High slippage.",
+      goalScore: 78,
+      goalReasoning: "Drift reduced.",
+      outcome: "success",
+      createdAt: "2026-03-22T12:00:00Z",
+    }];
+    const result = formatFeedbackPrompt(scores);
+    expect(result).toContain("PAST PERFORMANCE FEEDBACK");
+    expect(result).toContain("Cycle 3 (success) -- Composite: 76/100");
+    expect(result).toContain('Decision Quality (40% weight): 80 -- "Good direction."');
+    expect(result).toContain('Execution Quality (30% weight): 65 -- "High slippage."');
+    expect(result).toContain('Goal Progress (30% weight): 78 -- "Drift reduced."');
+    expect(result).toContain("Use this feedback to improve");
+  });
+
+  it("formats multiple scores in order", () => {
+    const scores = [
+      {
+        id: 2, intentId: "test", swapId: null, cycle: 5, composite: 85,
+        decisionScore: 90, decisionReasoning: "Excellent.",
+        executionScore: 80, executionReasoning: "Clean.",
+        goalScore: 85, goalReasoning: "On target.",
+        outcome: "success", createdAt: "2026-03-22T13:00:00Z",
+      },
+      {
+        id: 1, intentId: "test", swapId: null, cycle: 4, composite: 40,
+        decisionScore: 50, decisionReasoning: "Questionable.",
+        executionScore: 0, executionReasoning: "Failed.",
+        goalScore: 0, goalReasoning: "No progress.",
+        outcome: "failed", createdAt: "2026-03-22T12:00:00Z",
+      },
+    ];
+    const result = formatFeedbackPrompt(scores);
+    const cycle5Pos = result.indexOf("Cycle 5");
+    const cycle4Pos = result.indexOf("Cycle 4");
+    expect(cycle5Pos).toBeLessThan(cycle4Pos);
+    expect(result).toContain("Cycle 4 (failed)");
   });
 });

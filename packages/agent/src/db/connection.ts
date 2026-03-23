@@ -55,6 +55,23 @@ const CREATE_TABLES_SQL = `
   );
   CREATE INDEX IF NOT EXISTS idx_agent_logs_intent_seq
     ON agent_logs(intent_id, sequence);
+  CREATE TABLE IF NOT EXISTS swap_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    intent_id TEXT NOT NULL REFERENCES intents(id),
+    swap_id INTEGER REFERENCES swaps(id),
+    cycle INTEGER NOT NULL,
+    composite REAL NOT NULL,
+    decision_score INTEGER NOT NULL,
+    decision_reasoning TEXT NOT NULL,
+    execution_score INTEGER NOT NULL,
+    execution_reasoning TEXT NOT NULL,
+    goal_score INTEGER NOT NULL,
+    goal_reasoning TEXT NOT NULL,
+    outcome TEXT NOT NULL DEFAULT 'success',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_swap_scores_intent
+    ON swap_scores(intent_id, cycle DESC);
 `;
 
 // Migrations for schema changes after initial creation.

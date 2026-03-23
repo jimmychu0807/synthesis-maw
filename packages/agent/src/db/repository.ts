@@ -1,7 +1,7 @@
-import { eq, and, gt, lte, max } from "drizzle-orm";
+import { eq, and, gt, lte, max, desc } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema.js";
-import { intents, swaps, nonces, agentLogs } from "./schema.js";
+import { intents, swaps, nonces, agentLogs, swapScores } from "./schema.js";
 
 type IntentInsert = typeof intents.$inferInsert;
 type IntentSelect = typeof intents.$inferSelect;
@@ -10,8 +10,10 @@ type SwapSelect = typeof swaps.$inferSelect;
 type NonceSelect = typeof nonces.$inferSelect;
 type AgentLogInsert = Omit<typeof agentLogs.$inferInsert, "id">;
 type AgentLogSelect = typeof agentLogs.$inferSelect;
+type SwapScoreInsert = Omit<typeof swapScores.$inferInsert, "id">;
+type SwapScoreSelect = typeof swapScores.$inferSelect;
 
-export type { IntentInsert, IntentSelect, SwapInsert, SwapSelect, NonceSelect, AgentLogInsert, AgentLogSelect };
+export type { IntentInsert, IntentSelect, SwapInsert, SwapSelect, NonceSelect, AgentLogInsert, AgentLogSelect, SwapScoreInsert, SwapScoreSelect };
 
 export class IntentRepository {
   constructor(private db: BetterSQLite3Database<typeof schema>) {}
@@ -160,6 +162,22 @@ export class IntentRepository {
         ),
       )
       .orderBy(agentLogs.sequence)
+      .limit(limit)
+      .all();
+  }
+
+  // Swap scores (judge feedback)
+
+  insertSwapScore(data: SwapScoreInsert): void {
+    this.db.insert(swapScores).values(data).run();
+  }
+
+  getRecentScores(intentId: string, limit: number = 5): SwapScoreSelect[] {
+    return this.db
+      .select()
+      .from(swapScores)
+      .where(eq(swapScores.intentId, intentId))
+      .orderBy(desc(swapScores.cycle))
       .limit(limit)
       .all();
   }

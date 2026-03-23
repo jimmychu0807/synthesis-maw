@@ -60,3 +60,21 @@ export const agentLogs = sqliteTable("agent_logs", {
   durationMs: integer("duration_ms"),
   error: text("error"),
 });
+
+export const swapScores = sqliteTable("swap_scores", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  intentId: text("intent_id")
+    .notNull()
+    .references(() => intents.id),
+  swapId: integer("swap_id").references(() => swaps.id),
+  cycle: integer("cycle").notNull(),
+  composite: real("composite").notNull(),
+  decisionScore: integer("decision_score").notNull(),
+  decisionReasoning: text("decision_reasoning").notNull(),
+  executionScore: integer("execution_score").notNull(),
+  executionReasoning: text("execution_reasoning").notNull(),
+  goalScore: integer("goal_score").notNull(),
+  goalReasoning: text("goal_reasoning").notNull(),
+  outcome: text("outcome").notNull().default("success"),
+  createdAt: text("created_at").notNull(),
+});

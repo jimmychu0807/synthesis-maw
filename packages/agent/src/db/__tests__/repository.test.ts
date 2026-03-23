@@ -50,6 +50,21 @@ const CREATE_TABLES_SQL = `
     duration_ms INTEGER,
     error TEXT
   );
+  CREATE TABLE swap_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    intent_id TEXT NOT NULL REFERENCES intents(id),
+    swap_id INTEGER REFERENCES swaps(id),
+    cycle INTEGER NOT NULL,
+    composite REAL NOT NULL,
+    decision_score INTEGER NOT NULL,
+    decision_reasoning TEXT NOT NULL,
+    execution_score INTEGER NOT NULL,
+    execution_reasoning TEXT NOT NULL,
+    goal_score INTEGER NOT NULL,
+    goal_reasoning TEXT NOT NULL,
+    outcome TEXT NOT NULL DEFAULT 'success',
+    created_at TEXT NOT NULL
+  );
 `;
 
 function createTestDb() {
@@ -466,6 +481,95 @@ describe("IntentRepository", () => {
       });
       expect(repo.getMaxLogSequence("test-intent-1")).toBe(10);
       expect(repo.getMaxLogSequence("other")).toBe(99);
+    });
+  });
+
+  describe("swap_scores", () => {
+    const SAMPLE_SCORE = {
+      intentId: "test-intent-1",
+      cycle: 1,
+      composite: 75.5,
+      decisionScore: 80,
+      decisionReasoning: "Good trade direction.",
+      executionScore: 65,
+      executionReasoning: "Slippage was high.",
+      goalScore: 78,
+      goalReasoning: "Drift reduced meaningfully.",
+      outcome: "success",
+      createdAt: "2026-03-22T12:00:00Z",
+    };
+
+    it("inserts and retrieves a swap score", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      repo.insertSwapScore(SAMPLE_SCORE);
+      const scores = repo.getRecentScores("test-intent-1");
+      expect(scores).toHaveLength(1);
+      expect(scores[0].composite).toBeCloseTo(75.5);
+      expect(scores[0].decisionScore).toBe(80);
+      expect(scores[0].executionReasoning).toBe("Slippage was high.");
+    });
+
+    it("returns scores ordered by cycle descending", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      repo.insertSwapScore({ ...SAMPLE_SCORE, cycle: 1, composite: 70 });
+      repo.insertSwapScore({ ...SAMPLE_SCORE, cycle: 3, composite: 85 });
+      repo.insertSwapScore({ ...SAMPLE_SCORE, cycle: 2, composite: 60 });
+      const scores = repo.getRecentScores("test-intent-1");
+      expect(scores).toHaveLength(3);
+      expect(scores[0].cycle).toBe(3);
+      expect(scores[1].cycle).toBe(2);
+      expect(scores[2].cycle).toBe(1);
+    });
+
+    it("respects limit parameter (default 5)", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      for (let i = 1; i <= 8; i++) {
+        repo.insertSwapScore({ ...SAMPLE_SCORE, cycle: i, composite: 70 + i });
+      }
+      const defaultLimit = repo.getRecentScores("test-intent-1");
+      expect(defaultLimit).toHaveLength(5);
+      expect(defaultLimit[0].cycle).toBe(8);
+
+      const custom = repo.getRecentScores("test-intent-1", 3);
+      expect(custom).toHaveLength(3);
+    });
+
+    it("returns empty array when no scores exist", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      expect(repo.getRecentScores("test-intent-1")).toEqual([]);
+    });
+
+    it("scopes scores to the requested intent", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      repo.createIntent({ ...SAMPLE_INTENT, id: "other" });
+      repo.insertSwapScore(SAMPLE_SCORE);
+      repo.insertSwapScore({ ...SAMPLE_SCORE, intentId: "other", cycle: 2 });
+      expect(repo.getRecentScores("test-intent-1")).toHaveLength(1);
+      expect(repo.getRecentScores("other")).toHaveLength(1);
+    });
+
+    it("stores outcome field for failed swaps", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      repo.insertSwapScore({ ...SAMPLE_SCORE, outcome: "failed" });
+      const scores = repo.getRecentScores("test-intent-1");
+      expect(scores[0].outcome).toBe("failed");
+    });
+
+    it("links to swap via swapId when provided", () => {
+      repo.createIntent(SAMPLE_INTENT);
+      repo.insertSwap({
+        intentId: "test-intent-1",
+        txHash: "0xabc",
+        sellToken: "ETH",
+        buyToken: "USDC",
+        sellAmount: "0.1",
+        status: "confirmed",
+        timestamp: new Date().toISOString(),
+      });
+      const swapList = repo.getSwapsByIntent("test-intent-1");
+      repo.insertSwapScore({ ...SAMPLE_SCORE, swapId: swapList[0].id });
+      const scores = repo.getRecentScores("test-intent-1");
+      expect(scores[0].swapId).toBe(swapList[0].id);
     });
   });
 });
