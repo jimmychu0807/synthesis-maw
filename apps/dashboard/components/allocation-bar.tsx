@@ -42,9 +42,9 @@ export function AllocationBar({
               aria-hidden="true"
               className={`${getTokenBg(token)} ${ghost ? "opacity-25" : "opacity-90"} flex items-center justify-center ${styles.text} text-bg-primary transition-[width] duration-500 ease-out-data`}
               style={{ width: `${pct}%` }}
-              title={`${getTokenLabel(token)}: ${pct.toFixed(1)}%`}
+              title={`${getTokenLabel(token)}: ${pct.toFixed(2)}%`}
             >
-              {size === "lg" && pct >= 12 ? `${getTokenLabel(token)} ${pct.toFixed(0)}%` : ""}
+              {size === "lg" && pct >= 12 ? `${getTokenLabel(token)} ${pct.toFixed(2)}%` : ""}
             </div>
           );
         })}
@@ -64,10 +64,10 @@ export function AllocationBar({
               {size === "lg" ? (
                 <>
                   <span className={getTokenLabelColor(token)}>{getTokenLabel(token)}</span>
-                  <span className="font-mono text-text-secondary">{pct.toFixed(0)}%</span>
+                  <span className="font-mono text-text-secondary">{pct.toFixed(2)}%</span>
                 </>
               ) : (
-                <>{getTokenLabel(token)} {pct.toFixed(1)}%</>
+                <>{getTokenLabel(token)} {pct.toFixed(2)}%</>
               )}
             </span>
           );

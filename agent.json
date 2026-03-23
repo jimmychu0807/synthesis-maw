@@ -6,7 +6,7 @@
     "description": "An autonomous agent that compiles natural language portfolio rules into on-chain delegation constraints, privately reasons about when to rebalance via Venice AI, and executes trades on Uniswap — with every decision auditable but no strategy ever leaked.",
     "version": "0.1.0",
     "author": "neilei",
-    "license": "MIT"
+    "license": "Proprietary"
   },
   "profiles": ["core", "exec", "gov"],
   "capabilities": [
@@ -122,7 +122,7 @@
   ],
   "runtime": {
     "type": "node",
-    "version": "20",
+    "version": "22",
     "entrypoint": "src/index.ts",
     "command": "npx tsx src/index.ts --intent \"60/40 ETH/USDC, $200/day, 7 days\""
   },

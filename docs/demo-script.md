@@ -1,4 +1,4 @@
-1: Maw is an intent compiler that takes your plain text strategy and launches an agent that autonomously maintains your portfolio.
+1: Maw.finance is an intent compiler that takes your plain text strategy and launches an agent that autonomously maintains your portfolio.
 
 2: Have you ever used Uniswap, CowSwap, Aerodrome, Coinbase, or Odos? Now imagine being able to use all of those in tandem with a private agent that understands your strategy.
 
@@ -6,11 +6,11 @@
 
 4: (FLUFF) I’ll go more in depth when they come up in the demo.
 
-5: To spin up an agent, all you have to do is sign in with the wallet you want to manage, and describe how you want to balance your portfolio.
+5: To spin up an agent, all you have to do is sign in with Metamask Flask, and describe how you want to balance your portfolio.
 
 5.5: When you submit, we’ll use Venice.ai to analyze your strategy and produce a report describing how your portfolio will be managed.
 
-6: Venice supports end to end encryption and TEE on the uncensored model we're using, so your plaintext strategy never leaks to the big bad in corporate AI.
+6: Venice.ai supports end to end encryption and TEE on the uncensored model we're using, so your plaintext strategy never leaks to the big bad in corporate AI.
 
 7: If the report aligns with your requirements, you can use Metamask delegations to sign off on a specific amount from your portfolio that the agent is allowed to manage.
 
@@ -18,7 +18,7 @@
 
 8: This prevents you from getting rekt if your strategy doesn’t work as you expected.
 
-9: You can also specify logical guardrails in your prompt, like max spend per day or gas limits, which will be enforced with limits in Metamask Delegations if simple, or using Venice.ai for dynamic decision making if complex.
+9: You can also specify logical guardrails in your prompt, like max spend per day or gas limits, which will use Venice.ai for dynamic decision making if complex.
 
 10: (FLUFF) Note, the wallet you sign with will have to be Metamask Flask for the ERC-7715 integration.
 
@@ -65,10 +65,17 @@
 
 28: (Timelapse)
 
-29: So this shows the agent in motion. One last thing, at this point, we should be able to see our agent in erc-8004 scan.
-
 30: Yep, there we are. All private, all automated.
 
+31: Every agent exposes a full agent_log.jsonl that you can access up here
+
+Just a quick note for sponsors before we close: Nothing presented in this demo was mocked. The activity log has direct links to scanners that you can use to confirm, and you can test the live app at maw.finance
+
+If you don't have Metamask Flask installed, for the demo only, I've made every agent public so you can see them in action without spinning up your own, that's under the "Monitor" tab here
+
+The readme also has a dedicated sponsor section that links to the most relevant code for the Protocol Labs, Venice, Metamask, and Uniswap tracks.
+
+With all that said
 31: SEC - CLOSING
 
 32: The future of user interfaces is a chat box, where you describe what you want to do, and leave it to the agents to do it.
