@@ -112,10 +112,10 @@ describe("Venice LLM configuration", () => {
     }
   });
 
-  it("all tiers set enable_e2ee to true", () => {
+  it("default set enable_e2ee to false", () => {
     for (const call of constructorCalls) {
       const kwargs = call.modelKwargs as { venice_parameters: Record<string, unknown> };
-      expect(kwargs.venice_parameters.enable_e2ee).toBe(true);
+      expect(kwargs.venice_parameters.enable_e2ee).toBeUndefined();
     }
   });
 

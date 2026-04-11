@@ -28,20 +28,13 @@ export const PermitDataSchema = z.object({
 export type PermitData = z.infer<typeof PermitDataSchema>;
 
 export const ApprovalResponseSchema = z.object({
-  approval: z
-    .object({
-      tokenAddress: hexString,
-      spender: hexString,
-      amount: z.string(),
-      transactionRequest: z
-        .object({
-          to: hexString,
-          data: hexString,
-          value: z.string(),
-        })
-        .optional(),
-    })
-    .nullable(),
+  approval: z.object({
+    to: hexString,
+    from: hexString,
+    data: hexString,
+    value: hexString,
+    chainId: z.number(),
+  })
 });
 export type ApprovalResponse = z.infer<typeof ApprovalResponseSchema>;
 

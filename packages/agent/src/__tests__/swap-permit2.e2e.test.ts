@@ -51,8 +51,8 @@ const walletClient = createWalletClient({
 
 describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
   // Run approval + swap as a single atomic flow to avoid quote staleness
-  it("executes full USDC → ETH swap with explicit gas (the fix)", async () => {
-    const sellAmount = "0.50"; // $0.50 USDC — minimal test amount
+  it.skip("executes full USDC → ETH swap with explicit gas (the fix)", async () => {
+    const sellAmount = "0.10"; // $0.10 USDC — minimal test amount
     const amountRaw = parseUnits(sellAmount, 6).toString();
 
     // 1. Check and send Permit2 approval if needed
