@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from "vitest";
 
 // Mock all heavy dependencies so we can import pure functions
 vi.mock("../config.js", () => ({
-  env: { VENICE_API_KEY: "x", VENICE_BASE_URL: "https://x", UNISWAP_API_KEY: "x", AGENT_PRIVATE_KEY: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" },
+  env: { VENICE_API_KEY: "x", VENICE_BASE_URL: "https://x", VENICE_IMAGE_ENABLED: false, UNISWAP_API_KEY: "x", AGENT_PRIVATE_KEY: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" },
   CONTRACTS: {
     NATIVE_ETH: "0x0000000000000000000000000000000000000000",
     WETH_SEPOLIA: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
@@ -41,7 +41,7 @@ vi.mock("../utils/retry.js", () => ({
   withRetry: vi.fn((fn: () => Promise<unknown>) => fn()),
 }));
 
-import { calculateDrift, resolveTokenAddress, formatFeedbackPrompt } from "../agent-loop/index.js";
+import { calculateDrift, resolveTokenAddress, formatFeedbackPrompt, shouldGenerateAvatar } from "../agent-loop/index.js";
 
 describe("Agent Loop - resolveTokenAddress", () => {
   it("returns NATIVE_ETH for ETH on Sepolia", () => {
@@ -197,5 +197,19 @@ describe("Agent Loop - formatFeedbackPrompt", () => {
     const cycle4Pos = result.indexOf("Cycle 4");
     expect(cycle5Pos).toBeLessThan(cycle4Pos);
     expect(result).toContain("Cycle 4 (failed)");
+  });
+});
+
+describe("Agent Loop - shouldGenerateAvatar", () => {
+  it("returns false when Venice image generation is disabled", () => {
+    expect(shouldGenerateAvatar("intent-1", false, false)).toBe(false);
+  });
+
+  it("returns false when avatar already exists", () => {
+    expect(shouldGenerateAvatar("intent-1", true, true)).toBe(false);
+  });
+
+  it("returns true when enabled and avatar is missing", () => {
+    expect(shouldGenerateAvatar("intent-1", false, true)).toBe(true);
   });
 });

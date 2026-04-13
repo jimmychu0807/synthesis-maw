@@ -314,7 +314,8 @@ pnpm install
 # Configure
 cp .env.example .env
 # Required: VENICE_API_KEY, UNISWAP_API_KEY, AGENT_PRIVATE_KEY
-# Optional: CMC_PRO_API_KEY, JUDGE_PRIVATE_KEY, THEGRAPH_API_KEY
+# Optional: CMC_PRO_API_KEY, JUDGE_PRIVATE_KEY, THEGRAPH_API_KEY, VENICE_IMAGE_ENABLED
+# Venice image generation is disabled by default (`VENICE_IMAGE_ENABLED=false`)
 
 # Test
 pnpm test             # unit tests (agent + common + dashboard)

@@ -22,6 +22,10 @@ const envSchema = z.object({
   VENICE_BASE_URL: z.string().url().default("https://api.venice.ai/api/v1/"),
   VENICE_MODEL_OVERRIDE: z.string().optional(),
   VENICE_E2E_TEST: z.string().default("false"),
+  VENICE_IMAGE_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   UNISWAP_API_KEY: z.string().min(1),
   AGENT_PRIVATE_KEY: z
     .string()

@@ -117,6 +117,14 @@ export function calculateDrift(
   return { drift, maxDrift };
 }
 
+export function shouldGenerateAvatar(
+  intentId: string | undefined,
+  avatarExists: boolean,
+  imageGenerationEnabled: boolean,
+): boolean {
+  return Boolean(intentId) && !avatarExists && imageGenerationEnabled;
+}
+
 // ---------------------------------------------------------------------------
 // Agent Loop
 // ---------------------------------------------------------------------------
@@ -168,8 +176,21 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
   // serves the avatar URL, and 8004scan fetches it immediately after registration.
   if (config.intentId) {
     const existingAvatar = avatarPath(config.intentId);
-    if (existsSync(existingAvatar)) {
+    const hasExistingAvatar = existsSync(existingAvatar);
+    if (hasExistingAvatar) {
       logger.info({ intentId: config.intentId }, "Agent avatar already exists, skipping generation");
+    } else if (!shouldGenerateAvatar(config.intentId, hasExistingAvatar, env.VENICE_IMAGE_ENABLED)) {
+      logger.info(
+        { intentId: config.intentId, imageGenerationEnabled: env.VENICE_IMAGE_ENABLED },
+        "Avatar generation disabled; using default identity image",
+      );
+      config.intentLogger?.log("avatar_skipped", {
+        tool: "venice-image",
+        result: {
+          intentId: config.intentId,
+          reason: "venice_image_disabled",
+        },
+      });
     } else {
       config.intentLogger?.log("avatar_generating", {
         tool: "venice-image",
