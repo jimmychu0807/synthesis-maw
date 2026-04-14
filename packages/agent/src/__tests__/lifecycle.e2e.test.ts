@@ -122,6 +122,8 @@ describe("Intent Lifecycle E2E", () => {
 
     expect(res.status).toBe(201);
     const data = await res.json();
+    // console.log("create intent", data);
+
     intentId = data.intent.id;
     expect(intentId).toBeTruthy();
     expect(data.intent.status).toMatch(/active|failed/);
@@ -136,6 +138,8 @@ describe("Intent Lifecycle E2E", () => {
     expect(res.status).toBe(200);
 
     const data = await res.json();
+    // console.log("intent detail", data);
+
     expect(data.id).toBe(intentId);
     expect(data).toHaveProperty("workerStatus");
     expect(data).toHaveProperty("logs");
@@ -160,6 +164,8 @@ describe("Intent Lifecycle E2E", () => {
     expect(res.status).toBe(200);
 
     const intents = await res.json();
+    // console.log("intent list", intents);
+
     expect(Array.isArray(intents)).toBe(true);
     expect(intents.length).toBeGreaterThanOrEqual(1);
     expect(intents[0].id).toBe(intentId);
@@ -171,6 +177,7 @@ describe("Intent Lifecycle E2E", () => {
       headers: { Authorization: `Bearer ${auth.token}` },
       signal: controller.signal,
     });
+    // console.log("SSE endpoint", res);
 
     expect(res.status).toBe(200);
     const contentType = res.headers.get("content-type") ?? "";
@@ -191,6 +198,8 @@ describe("Intent Lifecycle E2E", () => {
     });
     expect(res.status).toBe(200);
     const data = await res.json();
+    // console.log("cancels the intent and worker stops", data);
+
     expect(data.status).toBe("cancelled");
   });
 
@@ -200,6 +209,8 @@ describe("Intent Lifecycle E2E", () => {
     });
     expect(res.status).toBe(200);
     const data = await res.json();
+    // console.log("cancelled intent shows stopped worker", data);
+
     expect(data.status).toBe("cancelled");
     expect(data.workerStatus).toBe("stopped");
   });

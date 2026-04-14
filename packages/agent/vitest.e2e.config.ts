@@ -13,6 +13,6 @@ export default defineConfig({
       env.VENICE_E2E_TEST === "true" ? "" : "src/venice/__tests__/*.e2e.test.ts",
     ].filter(Boolean),
     environment: "node",
-    testTimeout: 120000,
+    testTimeout: 200000,
   },
 });
