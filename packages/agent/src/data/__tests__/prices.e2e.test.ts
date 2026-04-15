@@ -18,6 +18,8 @@ describe("getTokenPrice (e2e)", () => {
       clearPriceCache();
       const result = await getTokenPrice("ETH");
 
+      console.log("ETH price:", result);
+
       expect(typeof result.price).toBe("number");
       // ETH should be in a reasonable range
       expect(result.price).toBeGreaterThan(100);
