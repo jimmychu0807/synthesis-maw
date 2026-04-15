@@ -3,8 +3,9 @@
  *
  * @module @maw/agent/data/portfolio.test
  */
+import { createPublicClient, type Address } from "viem";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Address } from "viem";
+import { getPortfolioBalance } from "../portfolio.js";
 
 // Mock viem before importing the module under test
 vi.mock("viem", async () => {
@@ -18,11 +19,12 @@ vi.mock("viem", async () => {
   };
 });
 
-import { createPublicClient } from "viem";
-import { getPortfolioBalance } from "../portfolio.js";
+/** Deterministic key for unit tests only — must not be a funded production wallet. */
+const TEST_PRIVATE_KEY =
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const; // well-known test key, no real funds
 
 describe("getPortfolioBalance", () => {
-  const testAddress = "0xf13021F02E23a8113C1bD826575a1682F6Fac927" as Address;
+  const testAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Address;
   const ethPriceUsd = 2000;
 
   let mockGetBalance: ReturnType<typeof vi.fn>;
