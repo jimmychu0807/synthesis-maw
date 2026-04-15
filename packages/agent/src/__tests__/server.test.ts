@@ -6,52 +6,13 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ---------------------------------------------------------------------------
-// Mock all heavy dependencies (prevents real crypto/DB/network)
-// ---------------------------------------------------------------------------
-vi.mock("../config.js", () => ({
-  env: {
-    VENICE_API_KEY: "x",
-    VENICE_BASE_URL: "https://x",
-    UNISWAP_API_KEY: "x",
-    AGENT_PRIVATE_KEY:
-      "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-  },
-  CONTRACTS: {
-    IDENTITY_BASE_SEPOLIA: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-    REPUTATION_BASE_SEPOLIA: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
-    VALIDATION_BASE_SEPOLIA: "0x8004Cb1BF31DAf7788923b405b754f57acEB4272",
-  },
-  CHAINS: {},
-  UNISWAP_API_BASE: "",
-  THEGRAPH_UNISWAP_V3_BASE: "",
-  MAW_AGENT_SVG_URL: "https://api.maw.finance/maw-agent.svg",
-  buildIntentIdentityUrl: (intentId: string) =>
-    `https://api.maw.finance/api/intents/${intentId}/identity.json`,
-  buildIntentAvatarUrl: (intentId: string) =>
-    `https://api.maw.finance/api/intents/${intentId}/avatar.webp`,
-}));
-vi.mock("viem/accounts", () => ({
-  privateKeyToAccount: vi.fn().mockReturnValue({
-    address: "0xABCDEF1234567890ABCDEF1234567890ABCDEF12",
-  }),
-}));
-vi.mock("../delegation/compiler.js", () => ({
-  compileIntent: vi.fn(),
-}));
-vi.mock("../logging/logger.js", () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
 vi.mock("../db/connection.js", () => ({
   getDb: vi.fn().mockReturnValue({}),
 }));
+
 // Track the singleton repo instance created by startup()
 let mockRepoInstance: Record<string, ReturnType<typeof vi.fn>>;
+
 vi.mock("../db/repository.js", () => {
   class MockRepo {
     createIntent = vi.fn();
@@ -76,6 +37,7 @@ vi.mock("../db/repository.js", () => {
   }
   return { IntentRepository: MockRepo };
 });
+
 vi.mock("../worker-pool.js", () => {
   class MockPool {
     start = vi.fn().mockResolvedValue(undefined);
@@ -89,6 +51,7 @@ vi.mock("../worker-pool.js", () => {
   }
   return { WorkerPool: MockPool };
 });
+
 vi.mock("../logging/intent-log.js", () => {
   class MockLogger {
     constructor(_intentId: string, _logDir?: string, _repo?: unknown) {}

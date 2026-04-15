@@ -91,6 +91,8 @@ let feedbackIndex: bigint;
 describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
   // --- Identity Registry ---
 
+  const FEEDBACK_AGENT_ID = 1n;
+
   it("register(string) mints an NFT and returns a valid agentId", async () => {
     const testUri = `https://example.com/e2e-test-${Date.now()}.json`;
 
@@ -182,7 +184,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
       abi: reputationRegistryAbi,
       functionName: "giveFeedback",
       args: [
-        1n,
+        FEEDBACK_AGENT_ID,
         450n, // value: 4.50 with 2 decimals
         2, // valueDecimals
         "abi-e2e",
@@ -204,7 +206,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
       address: reputationAddress,
       abi: reputationRegistryAbi,
       functionName: "getLastIndex",
-      args: [1n, account.address],
+      args: [FEEDBACK_AGENT_ID, account.address],
     });
 
     expect(typeof result).toBe("bigint");
@@ -218,7 +220,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
         address: reputationAddress,
         abi: reputationRegistryAbi,
         functionName: "readFeedback",
-        args: [1n, account.address, feedbackIndex],
+        args: [FEEDBACK_AGENT_ID, account.address, feedbackIndex],
       });
 
     expect(value).toBe(450n);
@@ -233,7 +235,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
       address: reputationAddress,
       abi: reputationRegistryAbi,
       functionName: "getClients",
-      args: [1n],
+      args: [FEEDBACK_AGENT_ID],
     });
 
     expect(Array.isArray(clients)).toBe(true);
@@ -247,7 +249,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
         address: reputationAddress,
         abi: reputationRegistryAbi,
         functionName: "getSummary",
-        args: [1n, [account.address], "", ""],
+        args: [FEEDBACK_AGENT_ID, [account.address], "", ""],
       });
 
     expect(typeof count).toBe("bigint");
@@ -261,7 +263,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
       address: reputationAddress,
       abi: reputationRegistryAbi,
       functionName: "revokeFeedback",
-      args: [1n, feedbackIndex],
+      args: [FEEDBACK_AGENT_ID, feedbackIndex],
       chain: baseSepolia,
       account,
     });

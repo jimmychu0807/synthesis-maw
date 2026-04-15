@@ -123,6 +123,7 @@ describe("Uniswap Trading API (e2e)", () => {
         chainId: 11155111,
         swapper: agentAddress,
         slippageTolerance: 1.0,
+        protocols: ["V3"],
       });
 
       expect(quote).toBeDefined();
