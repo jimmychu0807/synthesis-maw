@@ -51,7 +51,7 @@ const walletClient = createWalletClient({
 
 describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
   // Run approval + swap as a single atomic flow to avoid quote staleness
-  it("executes full USDC → ETH swap with explicit gas (the fix)", async () => {
+  it("executes full USDC → ETH swap with explicit gas", async () => {
     const sellAmount = "0.10"; // $0.10 USDC — minimal test amount
     const amountRaw = parseUnits(sellAmount, 6).toString();
 
@@ -127,7 +127,9 @@ describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
       value: BigInt(swapResponse.swap.value || "0"),
       chain,
       account: walletClient.account,
-      gas: 500_000n, // THE FIX: explicit gas bypasses viem's internal estimateGas
+      // FIX: explicit gas bypasses viem's internal estimateGas
+      // updated 260415: this fix is no longer needed, but keeping it for reference
+      // gas: 500_000n,
     });
 
     expect(txHash).toBeTruthy();
@@ -152,55 +154,6 @@ describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
     expect(receipt.status).toBe("success");
     expect(receipt.blockNumber).toBeGreaterThan(0n);
     expect(receipt.gasUsed).toBeGreaterThan(0n);
-  });
-
-  it("confirms swap without explicit gas fails with EstimateGasExecutionError", async () => {
-    // This test documents the bug. We get a quote, sign the permit, create the
-    // swap, then try to send WITHOUT explicit gas. This should fail with an
-    // EstimateGasExecutionError — confirming the fix is necessary.
-    const sellAmount = "0.50";
-    const amountRaw = parseUnits(sellAmount, 6).toString();
-
-    const quote = await getQuote({
-      tokenIn: CONTRACTS.USDC_SEPOLIA,
-      tokenOut: CONTRACTS.NATIVE_ETH,
-      amount: amountRaw,
-      type: "EXACT_INPUT",
-      chainId: 11155111,
-      swapper: agentAddress,
-      slippageTolerance: 5,
-      protocols: ["V3"],
-    });
-
-    if (!quote.permitData) {
-      console.log("No permitData — skipping regression test");
-      return;
-    }
-
-    const permitSignature = await signPermit2Data(walletClient, quote.permitData);
-    const swapResponse = await createSwap(quote, permitSignature);
-
-    try {
-      // This should fail — no explicit gas means viem calls estimateGas internally
-      await walletClient.sendTransaction({
-        to: swapResponse.swap.to,
-        data: swapResponse.swap.data,
-        value: BigInt(swapResponse.swap.value || "0"),
-        chain,
-        account: walletClient.account,
-        // NO gas parameter — should trigger the bug
-      });
-      // If we get here, viem no longer does internal estimateGas (behavior changed)
-      console.log(
-        "NOTE: sendTransaction without explicit gas succeeded — " +
-        "viem may have changed behavior. The explicit gas workaround may no longer be needed.",
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      // Expected: EstimateGasExecutionError from viem's internal prepareTransactionRequest
-      expect(msg).toMatch(/EstimateGas|revert|execution/i);
-      console.log("Confirmed: sendTransaction without explicit gas fails as expected:", msg.slice(0, 200));
-    }
   });
 });
 
