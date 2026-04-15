@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -13,6 +12,10 @@ concurrency:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    environment: ci
+    env:
+      UNISWAP_API_KEY: ${{ secrets.UNISWAP_API_KEY }}
+      VENICE_API_KEY: ${{ secrets.VENICE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
