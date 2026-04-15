@@ -1,30 +1,31 @@
 /**
  * E2E tests for portfolio balance fetching against live Sepolia RPC.
  *
+ * Requires `AGENT_PRIVATE_KEY` in project root `.env` (same wallet the agent uses on Sepolia).
+ *
  * @module @maw/agent/data/portfolio.e2e.test
  */
 import { describe, it, expect } from "vitest";
-import type { Address } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { env } from "../../config.js";
 import { getPortfolioBalance } from "../portfolio.js";
 
-const AGENT_ADDRESS =
-  "0xf13021F02E23a8113C1bD826575a1682F6Fac927" as Address;
-
 describe("getPortfolioBalance (e2e)", () => {
+  const agentAddress = privateKeyToAccount(env.AGENT_PRIVATE_KEY).address;
+  const ethPriceUsd = 2000;
+
   it(
     "returns real balances with correct shape for agent on Sepolia",
     { timeout: 30000 },
     async () => {
-      const ethPriceUsd = 2000;
-
       const result = await getPortfolioBalance(
-        AGENT_ADDRESS,
+        agentAddress,
         "sepolia",
         ethPriceUsd,
       );
 
       // --- Shape validation ---
-      expect(result.address).toBe(AGENT_ADDRESS);
+      expect(result.address).toBe(agentAddress);
 
       // ETH balance fields
       expect(typeof result.balances.ETH.raw).toBe("bigint");
@@ -48,15 +49,12 @@ describe("getPortfolioBalance (e2e)", () => {
     "wallet is funded — ETH balance should be non-zero on Sepolia",
     { timeout: 30000 },
     async () => {
-      const ethPriceUsd = 2000;
-
       const result = await getPortfolioBalance(
-        AGENT_ADDRESS,
+        agentAddress,
         "sepolia",
         ethPriceUsd,
       );
 
-      // Wallet is funded with ~1.0 ETH on Sepolia
       expect(result.balances.ETH.raw).toBeGreaterThan(0n);
       expect(Number(result.balances.ETH.formatted)).toBeGreaterThan(0);
       expect(result.balances.ETH.usdValue).toBeGreaterThan(0);
@@ -70,7 +68,7 @@ describe("getPortfolioBalance (e2e)", () => {
       const ethPriceUsd = 2500;
 
       const result = await getPortfolioBalance(
-        AGENT_ADDRESS,
+        agentAddress,
         "sepolia",
         ethPriceUsd,
       );
@@ -95,12 +93,12 @@ describe("getPortfolioBalance (e2e)", () => {
     "allocation percentages sum to 1.0 when portfolio has value",
     { timeout: 30000 },
     async () => {
-      const ethPriceUsd = 2000;
+      const newEthPriceUsd = 2000;
 
       const result = await getPortfolioBalance(
-        AGENT_ADDRESS,
+        agentAddress,
         "sepolia",
-        ethPriceUsd,
+        newEthPriceUsd,
       );
 
       if (result.totalUsdValue > 0) {
@@ -121,8 +119,8 @@ describe("getPortfolioBalance (e2e)", () => {
     { timeout: 30000 },
     async () => {
       const [result1, result2] = await Promise.all([
-        getPortfolioBalance(AGENT_ADDRESS, "sepolia", 1000),
-        getPortfolioBalance(AGENT_ADDRESS, "sepolia", 5000),
+        getPortfolioBalance(agentAddress, "sepolia", 1000),
+        getPortfolioBalance(agentAddress, "sepolia", 5000),
       ]);
 
       // Raw balances are the same (same on-chain data)
@@ -144,7 +142,7 @@ describe("getPortfolioBalance (e2e)", () => {
     async () => {
       const before = Date.now();
       const result = await getPortfolioBalance(
-        AGENT_ADDRESS,
+        agentAddress,
         "sepolia",
         2000,
       );

@@ -11,7 +11,7 @@ import type { PoolData } from "../thegraph.js";
 describe("getPoolData (e2e)", () => {
   it.skipIf(!env.THEGRAPH_API_KEY)(
     "fetches real WETH/USDC pool data from Uniswap V3 subgraph",
-    { timeout: 30000 },
+    { timeout: 10000 },
     async () => {
       const pools = await getPoolData("WETH", "USDC");
 
@@ -48,7 +48,7 @@ describe("getPoolData (e2e)", () => {
 
   it.skipIf(!env.THEGRAPH_API_KEY)(
     "returns empty array for nonexistent token pair",
-    { timeout: 30000 },
+    { timeout: 10000 },
     async () => {
       const pools = await getPoolData("FAKECOIN123", "NOTREAL456");
       expect(pools).toEqual([]);
