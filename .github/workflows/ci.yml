@@ -16,6 +16,7 @@ jobs:
     env:
       UNISWAP_API_KEY: ${{ secrets.UNISWAP_API_KEY }}
       VENICE_API_KEY: ${{ secrets.VENICE_API_KEY }}
+      AGENT_PRIVATE_KEY: ${{ secrets.AGENT_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
 
