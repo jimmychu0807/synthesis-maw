@@ -51,7 +51,7 @@ const walletClient = createWalletClient({
 
 describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
   // Run approval + swap as a single atomic flow to avoid quote staleness
-  it.skip("executes full USDC → ETH swap with explicit gas (the fix)", async () => {
+  it("executes full USDC → ETH swap with explicit gas (the fix)", async () => {
     const sellAmount = "0.10"; // $0.10 USDC — minimal test amount
     const amountRaw = parseUnits(sellAmount, 6).toString();
 
@@ -63,12 +63,12 @@ describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
       walletAddress: agentAddress,
     });
 
-    if (approval.approval?.transactionRequest) {
+    if (approval.approval) {
       console.log("Sending Permit2 approval tx...");
       const approvalTx = await walletClient.sendTransaction({
-        to: approval.approval.transactionRequest.to,
-        data: approval.approval.transactionRequest.data,
-        value: BigInt(approval.approval.transactionRequest.value || "0"),
+        to: approval.approval.to,
+        data: approval.approval.data,
+        value: BigInt(approval.approval.value || "0"),
         chain,
         account: walletClient.account,
       });
@@ -105,7 +105,7 @@ describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
     if (quote.permitData) {
       permitSignature = await signPermit2Data(walletClient, quote.permitData);
       expect(permitSignature).toBeTruthy();
-      console.log("Permit2 signature:", permitSignature.slice(0, 20) + "...");
+      console.log("Permit2 signature:", permitSignature);
     } else {
       console.log("No permitData (Permit2 already approved for this token)");
     }
@@ -116,7 +116,7 @@ describe("Permit2 swap e2e (USDC → ETH on Sepolia)", () => {
     expect(swapResponse.swap.to).toBeTruthy();
     expect(swapResponse.swap.data).toBeTruthy();
 
-    // 5. Send transaction WITH explicit gas — this is the fix under test.
+    // 5. Send the swap once WITH explicit gas — this is the fix under test.
     // Before the fix, this would fail with:
     //   EstimateGasExecutionError: Execution reverted for an unknown reason.
     // Because viem's sendTransaction calls prepareTransactionRequest → estimateGas

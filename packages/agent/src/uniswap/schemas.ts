@@ -27,16 +27,26 @@ export const PermitDataSchema = z.object({
 });
 export type PermitData = z.infer<typeof PermitDataSchema>;
 
-export const ApprovalResponseSchema = z.object({
-  approval: z.object({
+/** Calldata + metadata returned by POST /check_approval when a token → Permit2 approve is needed. */
+export const ApprovalTransactionRequestSchema = z
+  .object({
     to: hexString,
     from: hexString,
     data: hexString,
     value: hexString,
     chainId: z.number(),
   })
-});
+  .passthrough();
+
+export const ApprovalResponseSchema = z
+  .object({
+    requestId: z.string().optional(),
+    /** `null` when the wallet already has sufficient Permit2 allowance for the amount. */
+    approval: z.union([ApprovalTransactionRequestSchema, z.null()]),
+  })
+  .passthrough();
 export type ApprovalResponse = z.infer<typeof ApprovalResponseSchema>;
+export type ApprovalTransactionRequest = z.infer<typeof ApprovalTransactionRequestSchema>;
 
 export const QuoteResponseSchema = z
   .object({

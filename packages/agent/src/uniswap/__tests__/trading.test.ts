@@ -39,10 +39,13 @@ describe("Uniswap Trading API", () => {
   describe("checkApproval", () => {
     it("sends correct request to /check_approval", async () => {
       const mockResponse = {
+        requestId: "req-approval-1",
         approval: {
-          tokenAddress: "0x1234567890abcdef1234567890abcdef12345678",
-          spender: "0xabcdef1234567890abcdef1234567890abcdef12",
-          amount: "1000000",
+          to: "0x1234567890abcdef1234567890abcdef12345678",
+          from: "0xwallet0000000000000000000000000000000000",
+          data: "0x095ea7b3000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          value: "0x00",
+          chainId: 11155111,
         },
       };
 
@@ -67,7 +70,8 @@ describe("Uniswap Trading API", () => {
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.token).toBe("0x1234567890abcdef1234567890abcdef12345678");
       expect(body.chainId).toBe(11155111);
-      expect(result.approval?.tokenAddress).toBe("0x1234567890abcdef1234567890abcdef12345678");
+      expect(result.approval?.to).toBe("0x1234567890abcdef1234567890abcdef12345678");
+      expect(result.approval?.chainId).toBe(11155111);
     });
 
     it("throws on API error", async () => {
@@ -109,12 +113,14 @@ describe("Uniswap Trading API", () => {
       expect(result.approval).toBeNull();
     });
 
-    it("throws when hex strings lack 0x prefix", async () => {
+    it("throws when approval tx hex fields lack 0x prefix", async () => {
       const mockResponse = {
         approval: {
-          tokenAddress: "no-hex-prefix",
-          spender: "0xabcdef1234567890abcdef1234567890abcdef12",
-          amount: "1000000",
+          to: "no-hex-prefix",
+          from: "0xwallet0000000000000000000000000000000000",
+          data: "0x095ea7b3",
+          value: "0x00",
+          chainId: 11155111,
         },
       };
 
