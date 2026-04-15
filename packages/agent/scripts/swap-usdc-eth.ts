@@ -111,12 +111,12 @@ if (!approvalRes.ok) {
 const approval = await approvalRes.json();
 console.log("Approval response:", JSON.stringify(approval, null, 2));
 
-if (approval.approval?.transactionRequest) {
+if (approval.approval) {
   console.log("Sending ERC-20 approval tx from Uniswap...");
   const approveTx = await walletClient.sendTransaction({
-    to: approval.approval.transactionRequest.to,
-    data: approval.approval.transactionRequest.data,
-    value: BigInt(approval.approval.transactionRequest.value || "0"),
+    to: approval.approval.to,
+    data: approval.approval.data,
+    value: BigInt(approval.approval.value || "0"),
     chain: sepolia,
     account,
   });

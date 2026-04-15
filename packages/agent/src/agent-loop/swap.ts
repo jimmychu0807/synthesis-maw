@@ -247,7 +247,7 @@ export async function executeSwap(
       walletAddress: agentAddress,
     });
 
-    if (approval.approval?.transactionRequest) {
+    if (approval.approval) {
       logger.info(`Sending Permit2 approval for ${swap.sellToken}...`);
       const approvalWallet = createWalletClient({
         account: privateKeyToAccount(config.agentKey),
@@ -256,9 +256,9 @@ export async function executeSwap(
       });
       const approvalClient = createPublicClient({ chain, transport: rpcTransport(chain) });
       const approvalTx = await approvalWallet.sendTransaction({
-        to: approval.approval.transactionRequest.to,
-        data: approval.approval.transactionRequest.data,
-        value: BigInt(approval.approval.transactionRequest.value || "0"),
+        to: approval.approval.to,
+        data: approval.approval.data,
+        value: BigInt(approval.approval.value || "0"),
         chain,
         account: approvalWallet.account,
       });

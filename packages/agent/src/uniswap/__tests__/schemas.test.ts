@@ -12,46 +12,59 @@ import {
 } from "../schemas.js";
 
 describe("ApprovalResponseSchema", () => {
-  it("accepts valid approval response", () => {
+  const validTxApproval = {
+    requestId: "e63f1e1e-b9e9-411a-bcc8-ff18ce4e77cf",
+    approval: {
+      to: "0x1234567890abcdef1234567890abcdef12345678" as const,
+      from: "0xC9bebBA9f481b12cE6f3EA54c4B182c9636ec421" as const,
+      data: "0x095ea7b3000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" as const,
+      value: "0x00" as const,
+      chainId: 1,
+    },
+  };
+
+  it("accepts valid check_approval response (tx on approval)", () => {
+    const result = ApprovalResponseSchema.safeParse(validTxApproval);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.approval?.to).toBe(validTxApproval.approval.to);
+    }
+  });
+
+  it("accepts approval with extra API fields (gas)", () => {
     const valid = {
+      ...validTxApproval,
       approval: {
-        tokenAddress: "0x1234567890abcdef1234567890abcdef12345678",
-        spender: "0xabcdef1234567890abcdef1234567890abcdef12",
-        amount: "1000000",
+        ...validTxApproval.approval,
+        gasLimit: "56344",
+        maxFeePerGas: "4656513686",
       },
     };
     const result = ApprovalResponseSchema.safeParse(valid);
     expect(result.success).toBe(true);
   });
 
-  it("accepts approval with transactionRequest", () => {
-    const valid = {
-      approval: {
-        tokenAddress: "0x1234567890abcdef1234567890abcdef12345678",
-        spender: "0xabcdef1234567890abcdef1234567890abcdef12",
-        amount: "1000000",
-        transactionRequest: {
-          to: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-          data: "0xabcdef",
-          value: "0",
-        },
-      },
-    };
-    const result = ApprovalResponseSchema.safeParse(valid);
+  it("accepts approval: null (allowance already sufficient)", () => {
+    const result = ApprovalResponseSchema.safeParse({
+      requestId: "req-1",
+      approval: null,
+    });
     expect(result.success).toBe(true);
   });
 
-  it("rejects missing approval object", () => {
+  it("rejects missing approval key", () => {
     const result = ApprovalResponseSchema.safeParse({ unexpected: "data" });
     expect(result.success).toBe(false);
   });
 
-  it("rejects non-hex tokenAddress", () => {
+  it("rejects non-hex to address in approval tx", () => {
     const invalid = {
       approval: {
-        tokenAddress: "not-hex",
-        spender: "0xabcdef1234567890abcdef1234567890abcdef12",
-        amount: "1000000",
+        to: "not-hex",
+        from: "0xC9bebBA9f481b12cE6f3EA54c4B182c9636ec421",
+        data: "0x095ea7b3",
+        value: "0x00",
+        chainId: 1,
       },
     };
     const result = ApprovalResponseSchema.safeParse(invalid);

@@ -308,17 +308,19 @@ describe("Multi-Intent E2E", () => {
     // Cleanup
     afterAll(async () => {
       // Cancel any remaining active intents
-      for (const id of createdIntentIds) {
-        try {
-          await fetch(`${BASE}/api/intents/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        } catch {
-          // ignore cleanup errors
-        }
+      try {
+        await Promise.all(
+          createdIntentIds.map((id) =>
+            fetch(`${BASE}/api/intents/${id}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          )
+        );
+      } catch {
+        // ignore cleanup errors
       }
-    });
+    }, 20000); // default from 10 sec to 20 sec timeout for cleanup
   });
 
   // -----------------------------------------------------------------------

@@ -35,7 +35,7 @@ async function waitForServer(timeoutMs = 30000): Promise<void> {
     } catch {
       // Server not ready yet
     }
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error(`Server did not start within ${timeoutMs}ms`);
 }
