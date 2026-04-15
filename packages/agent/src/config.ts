@@ -117,6 +117,23 @@ export const CONTRACTS = {
 
 // ── API endpoints ────────────────────────────────────────────────────
 
+export const MAW_API_BASE_URL = "https://api.maw.finance";
+export const MAW_AGENT_SVG_URL = `${MAW_API_BASE_URL}/maw-agent.svg`;
+
+export function buildIntentIdentityUrl(intentId: string): string {
+  return `${MAW_API_BASE_URL}/api/intents/${intentId}/identity.json`;
+}
+
+export function buildIntentAvatarUrl(intentId: string): string {
+  return `${MAW_API_BASE_URL}/api/intents/${intentId}/avatar.webp`;
+}
+
+export const EVIDENCE_API_BASE_URL = `${MAW_API_BASE_URL}/api/evidence`;
+
+export function buildEvidenceUrl(intentId: string, hash: string): string {
+  return `${EVIDENCE_API_BASE_URL}/${intentId}/${hash}`;
+}
+
 export const UNISWAP_API_BASE = "https://trade-api.gateway.uniswap.org/v1";
 
 const THEGRAPH_SUBGRAPH_ID =

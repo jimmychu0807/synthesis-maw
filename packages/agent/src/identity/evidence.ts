@@ -10,9 +10,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { keccak256, toHex, type Hex } from "viem";
+import { buildEvidenceUrl } from "../config.js";
 
 const EVIDENCE_BASE_DIR = "data/evidence";
-const EVIDENCE_BASE_URL = "https://api.maw.finance/api/evidence";
 
 export interface SwapEvidenceInput {
   agentId: bigint;
@@ -147,6 +147,6 @@ export function storeEvidence<T extends object>(
   const filePath = join(dir, `${hash}.json`);
   writeFileSync(filePath, json, "utf-8");
 
-  const url = `${EVIDENCE_BASE_URL}/${intentId}/${hash}`;
+  const url = buildEvidenceUrl(intentId, hash);
   return { hash, filePath, url };
 }

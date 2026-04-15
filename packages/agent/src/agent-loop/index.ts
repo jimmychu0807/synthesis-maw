@@ -10,7 +10,7 @@ import { AIMessage } from "@langchain/core/messages";
 import { type Address, type Hex, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia, base } from "viem/chains";
-import { env } from "../config.js";
+import { buildIntentIdentityUrl, env } from "../config.js";
 import type { IntentParse } from "../venice/schemas.js";
 import { RebalanceDecisionSchema } from "../venice/schemas.js";
 import { reasoningLlm, fastLlm, FAST_MODEL, RESEARCH_MODEL, REASONING_MODEL, estimateDiemCost } from "../venice/llm.js";
@@ -225,7 +225,7 @@ export async function runAgentLoop(config: AgentConfig): Promise<AgentState> {
     // Register new identity for this intent
     try {
       const intentId = config.intentId ?? "unknown";
-      const agentURI = `https://api.maw.finance/api/intents/${intentId}/identity.json`;
+      const agentURI = buildIntentIdentityUrl(intentId);
       const { txHash, agentId } = await withRetry(
         () => registerAgent(agentURI, "base-sepolia"),
         { label: "erc8004:register", maxRetries: 3 },
