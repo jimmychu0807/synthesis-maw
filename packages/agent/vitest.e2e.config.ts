@@ -4,14 +4,14 @@
  * @module @maw/agent/vitest.e2e.config
  */
 import { defineConfig } from "vitest/config";
-import { env } from "./src/config.js";
+// Import env validation as a side-effect so required keys still fail fast.
+import "./src/config.js";
 
 export default defineConfig({
   test: {
     include: ["src/**/*.e2e.test.ts"],
-    exclude: [
-      env.VENICE_E2E_TEST === "true" ? "" : "src/venice/__tests__/*.e2e.test.ts",
-    ].filter(Boolean),
+    fileParallelism: true,
+    maxWorkers: 3,
     environment: "node",
     testTimeout: 200000,
   },
