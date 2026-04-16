@@ -80,8 +80,9 @@ const reputationAddress = CONTRACTS.REPUTATION_BASE_SEPOLIA;
 // ---------------------------------------------------------------------------
 
 let registeredAgentId: bigint;
-let noUriAgentId: bigint;
+let agentRegistered: boolean = false;
 let feedbackIndex: bigint;
+let feedbackGiven: boolean = false;
 
 // ---------------------------------------------------------------------------
 // All tests in a single describe to guarantee sequential execution.
@@ -110,6 +111,7 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
 
     registeredAgentId = extractMintedAgentId(receipt.logs);
     expect(registeredAgentId).toBeGreaterThan(0n);
+    agentRegistered = true;
   });
 
   it("register() mints an NFT without a URI", async () => {
@@ -125,12 +127,16 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     expect(receipt.status).toBe("success");
 
-    noUriAgentId = extractMintedAgentId(receipt.logs);
+    const noUriAgentId = extractMintedAgentId(receipt.logs);
     expect(noUriAgentId).toBeGreaterThan(0n);
     expect(noUriAgentId).not.toBe(registeredAgentId);
   });
 
-  it("setAgentURI updates the URI on an agent we own", async () => {
+  it("setAgentURI updates the URI on an agent we own", async (ctx) => {
+    if (!agentRegistered) {
+      ctx.skip("agent could not be registered successfully");
+    }
+
     const newUri = `https://example.com/updated-${Date.now()}.json`;
 
     const hash = await walletClient.writeContract({
@@ -146,7 +152,11 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     expect(receipt.status).toBe("success");
   });
 
-  it("setMetadata writes a key-value pair on an agent we own", async () => {
+  it("setMetadata writes a key-value pair on an agent we own", async (ctx) => {
+    if (!agentRegistered) {
+      ctx.skip("agent could not be registered successfully");
+    }
+
     const metadataValue = toHex("maw-e2e-test");
 
     const hash = await walletClient.writeContract({
@@ -162,7 +172,11 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     expect(receipt.status).toBe("success");
   });
 
-  it("getMetadata returns bytes without reverting", async () => {
+  it("getMetadata returns bytes without reverting", async (ctx) => {
+    if (!agentRegistered) {
+      ctx.skip("agent could not be registered successfully");
+    }
+
     const result = await publicClient.readContract({
       address: identityAddress,
       abi: identityRegistryAbi,
@@ -199,9 +213,14 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
 
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     expect(receipt.status).toBe("success");
+    feedbackGiven = true;
   });
 
-  it("getLastIndex returns the latest feedback index for our address", async () => {
+  it("getLastIndex returns the latest feedback index for our address", async (ctx) => {
+    if (!feedbackGiven) {
+      ctx.skip("feedback could not be given successfully");
+    }
+
     const result = await publicClient.readContract({
       address: reputationAddress,
       abi: reputationRegistryAbi,
@@ -214,7 +233,11 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     feedbackIndex = result;
   });
 
-  it("readFeedback returns the feedback we just submitted", async () => {
+  it("readFeedback returns the feedback we just submitted", async (ctx) => {
+    if (!feedbackGiven) {
+      ctx.skip("feedback could not be given successfully");
+    }
+
     const [value, valueDecimals, tag1, tag2, isRevoked] =
       await publicClient.readContract({
         address: reputationAddress,
@@ -230,7 +253,11 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     expect(isRevoked).toBe(false);
   });
 
-  it("getClients returns an array that includes our address", async () => {
+  it("getClients returns an array that includes our address", async (ctx) => {
+    if (!feedbackGiven) {
+      ctx.skip("feedback could not be given successfully");
+    }
+
     const clients = await publicClient.readContract({
       address: reputationAddress,
       abi: reputationRegistryAbi,
@@ -243,7 +270,11 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     expect(lowered).toContain(account.address.toLowerCase());
   });
 
-  it("getSummary returns aggregated feedback stats", async () => {
+  it("getSummary returns aggregated feedback stats", async (ctx) => {
+    if (!feedbackGiven) {
+      ctx.skip("feedback could not be given successfully");
+    }
+
     const [count, summaryValue, summaryValueDecimals] =
       await publicClient.readContract({
         address: reputationAddress,
@@ -258,7 +289,11 @@ describe("ERC-8004 ABI E2E (Base Sepolia)", () => {
     expect(typeof summaryValueDecimals).toBe("number");
   });
 
-  it("revokeFeedback succeeds on-chain", async () => {
+  it("revokeFeedback succeeds on-chain", async (ctx) => {
+    if (!feedbackGiven) {
+      ctx.skip("feedback could not be given successfully");
+    }
+
     const hash = await walletClient.writeContract({
       address: reputationAddress,
       abi: reputationRegistryAbi,
