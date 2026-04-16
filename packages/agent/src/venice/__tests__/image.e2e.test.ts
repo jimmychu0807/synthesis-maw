@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import { generateImagePrompt, generateAgentAvatar, avatarPath } from "../image.js";
 import { existsSync, unlinkSync } from "node:fs";
 
-describe("Venice image generation (e2e)", () => {
+const imageE2eEnabled = process.env.VENICE_IMAGE_ENABLED === "true";
+const describeIfImageEnabled = imageE2eEnabled ? describe : describe.skip;
+
+describeIfImageEnabled("Venice image generation (e2e)", () => {
   it("generates a real image prompt via Venice LLM", async () => {
     const prompt = await generateImagePrompt({
       targetAllocation: { ETH: 0.7, USDC: 0.3 },
