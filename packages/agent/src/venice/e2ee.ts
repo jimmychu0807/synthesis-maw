@@ -21,6 +21,7 @@ const HKDF_INFO = new TextEncoder().encode("ecdsa_encryption");
 const BASE_URL = env.VENICE_BASE_URL.replace(/\/+$/, "");
 
 /** The Venice E2EE reasoning model running inside an Intel TDX enclave. */
+// Ali Qwen model, $0.50/M input | $4.00/M output
 export const E2EE_REASONING_MODEL = "e2ee-qwen3-5-122b-a10b";
 
 // ── Session ────────────────────────────────────────────────────────

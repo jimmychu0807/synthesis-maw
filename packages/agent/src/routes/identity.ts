@@ -16,7 +16,13 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { privateKeyToAccount } from "viem/accounts";
 import type { IntentRepository } from "../db/repository.js";
-import { env, CONTRACTS } from "../config.js";
+import {
+  buildIntentAvatarUrl,
+  buildIntentIdentityUrl,
+  CONTRACTS,
+  env,
+  MAW_AGENT_SVG_URL,
+} from "../config.js";
 
 export interface IdentityRouteDeps {
   repo: IntentRepository;
@@ -55,15 +61,15 @@ export function createIdentityRoutes(deps: IdentityRouteDeps) {
       name: "Maw DeFi Rebalancer",
       description: `Autonomous DeFi agent that privately reasons about portfolio rebalancing via Venice AI and executes trades on Uniswap within ERC-7715 delegation constraints. Strategy: ${allocSummary || "custom"}. Budget: $${parsedIntent?.dailyBudgetUsd ?? 0}/day.`,
       image: existsSync(join("data", "images", `${intentId}.webp`))
-        ? `https://api.maw.finance/api/intents/${intentId}/avatar.webp`
-        : "https://api.maw.finance/maw-agent.svg",
+        ? buildIntentAvatarUrl(intentId)
+        : MAW_AGENT_SVG_URL,
       active: intent.status === "active",
       protocol: "custom",
       x402Support: false,
       services: [
         {
           name: "web",
-          endpoint: `https://api.maw.finance/api/intents/${intentId}/identity.json`,
+          endpoint: buildIntentIdentityUrl(intentId),
         },
       ],
       registrations: agentId !== null

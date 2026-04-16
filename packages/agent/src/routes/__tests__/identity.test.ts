@@ -8,6 +8,11 @@ vi.mock("../../config.js", () => ({
     AGENT_PRIVATE_KEY:
       "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   },
+  MAW_AGENT_SVG_URL: "https://api.maw.finance/maw-agent.svg",
+  buildIntentAvatarUrl: (intentId: string) =>
+    `https://api.maw.finance/api/intents/${intentId}/avatar.webp`,
+  buildIntentIdentityUrl: (intentId: string) =>
+    `https://api.maw.finance/api/intents/${intentId}/identity.json`,
   CONTRACTS: {
     IDENTITY_BASE_SEPOLIA: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
     REPUTATION_BASE_SEPOLIA: "0x8004B663056A597Dffe9eCcC1965A193B7388713",

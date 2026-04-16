@@ -29,7 +29,13 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import { env, CONTRACTS, rpcTransport } from "../config.js";
+import {
+  buildEvidenceUrl,
+  buildIntentIdentityUrl,
+  CONTRACTS,
+  env,
+  rpcTransport,
+} from "../config.js";
 import { getQuote, createSwap, checkApproval } from "../uniswap/trading.js";
 import { signPermit2Data } from "../uniswap/permit2.js";
 import { registerAgent, submitValidationRequest } from "../identity/erc8004.js";
@@ -161,7 +167,7 @@ describe("ERC-8004 registration + validation request e2e", () => {
   let agentId: bigint | undefined;
 
   it("registers a fresh agent identity on Base Sepolia", async () => {
-    const testURI = `https://api.maw.finance/api/intents/e2e-test-${Date.now()}/identity.json`;
+    const testURI = buildIntentIdentityUrl(`e2e-test-${Date.now()}`);
     const result = await registerAgent(testURI, "base-sepolia");
 
     expect(result.txHash).toBeTruthy();
@@ -189,7 +195,7 @@ describe("ERC-8004 registration + validation request e2e", () => {
 
     const testEvidence = { test: true, timestamp: new Date().toISOString() };
     const requestHash = keccak256(toHex(JSON.stringify(testEvidence)));
-    const requestURI = `https://api.maw.finance/api/evidence/e2e-test/${requestHash}`;
+    const requestURI = buildEvidenceUrl("e2e-test", requestHash);
 
     // This was failing with "Not authorized" when using a stale agentId.
     // With a fresh registration, the agent wallet owns this agentId.
