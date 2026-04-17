@@ -10,6 +10,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { privateKeyToAccount } from "viem/accounts";
+import { parse as parseYaml } from "yaml";
 
 type Hex = `0x${string}`;
 
@@ -146,35 +147,58 @@ function parseArgs(argv: string[]): ScriptConfig {
   };
 }
 
-function unquote(raw: string): string {
-  const s = raw.trim();
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    return s.slice(1, -1);
-  }
-  return s;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function parseYamlInput(yamlText: string, strict: boolean, defaultCycles?: number): YamlInput {
+  const parsed = parseYaml(yamlText) as unknown;
+  if (!isRecord(parsed)) {
+    throw new Error("Invalid YAML: expected top-level object with 'cycles' and 'users'.");
+  }
+
+  const cyclesFromYaml = parsed.cycles;
+  const resolvedCyclesRaw =
+    typeof cyclesFromYaml === "number"
+      ? cyclesFromYaml
+      : cyclesFromYaml === undefined
+        ? defaultCycles
+        : Number.NaN;
+  const resolvedCycles = resolvedCyclesRaw;
+  if (resolvedCycles === undefined || !Number.isInteger(resolvedCycles) || resolvedCycles < 1) {
+    throw new Error(
+      "Missing valid cycles. Set top-level 'cycles' in YAML (positive integer), or pass --cycles.",
+    );
+  }
+
+  if (!Array.isArray(parsed.users)) {
+    throw new Error("Invalid YAML: top-level 'users' must be an array.");
+  }
+
   const users: YamlUser[] = [];
-  const lines = yamlText.split(/\r?\n/);
-  let globalCycles: number | undefined;
+  for (const user of parsed.users) {
+    if (!isRecord(user)) {
+      if (strict) {
+        throw new Error("Invalid YAML user entry (must be an object).");
+      }
+      console.warn("[warn] Skipping YAML user entry (must be an object).");
+      continue;
+    }
 
-  let current: { privateKey: string; intents: string[] } | null = null;
-  let inIntents = false;
-  let inUsers = false;
+    const privateKey = typeof user.privateKey === "string" ? user.privateKey.trim() : "";
+    const intents = Array.isArray(user.intents)
+      ? user.intents
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0)
+      : [];
 
-  const commitCurrent = (): void => {
-    if (!current) return;
-    const key = current.privateKey.trim();
-    const intents = current.intents.map((v) => v.trim()).filter((v) => v.length > 0);
-
-    const keyValid = /^0x[0-9a-fA-F]{64}$/.test(key);
+    const keyValid = /^0x[0-9a-fA-F]{64}$/.test(privateKey);
     const intentsValid = intents.length > 0;
-
     if (!keyValid || !intentsValid) {
       let reason = "invalid YAML user entry";
       if (!keyValid) {
-        reason = `invalid privateKey: ${key}`;
+        reason = `invalid privateKey: ${privateKey}`;
       } else if (!intentsValid) {
         reason = "intents must be a non-empty string array";
       }
@@ -182,70 +206,14 @@ function parseYamlInput(yamlText: string, strict: boolean, defaultCycles?: numbe
         throw new Error(`Invalid YAML user entry (${reason}).`);
       }
       console.warn(`[warn] Skipping YAML user entry (${reason}).`);
-      current = null;
-      inIntents = false;
-      return;
-    }
-
-    users.push({ privateKey: key as Hex, intents });
-    current = null;
-    inIntents = false;
-  };
-
-  for (const lineRaw of lines) {
-    const line = lineRaw.trim();
-    if (line.length === 0 || line.startsWith("#")) continue;
-
-    if (line.startsWith("cycles:")) {
-      const value = unquote(line.slice("cycles:".length));
-      const parsed = Number(value);
-      globalCycles = Number.isFinite(parsed) ? parsed : Number.NaN;
       continue;
     }
 
-    if (line === "users:") {
-      inUsers = true;
-      continue;
-    }
-
-    if (line.startsWith("- privateKey:")) {
-      if (!inUsers) {
-        if (strict) {
-          throw new Error("Invalid YAML format: user entries must be under top-level 'users:'.");
-        }
-        console.warn("[warn] Skipping user entry outside top-level 'users:' block.");
-        continue;
-      }
-      commitCurrent();
-      const value = unquote(line.slice("- privateKey:".length));
-      current = { privateKey: value, intents: [] };
-      inIntents = false;
-      continue;
-    }
-
-    if (!current) continue;
-
-    if (line === "intents:" || line.startsWith("intents:")) {
-      inIntents = true;
-      continue;
-    }
-
-    if (inIntents && line.startsWith("- ")) {
-      current.intents.push(unquote(line.slice(2)));
-    }
+    users.push({ privateKey: privateKey as Hex, intents });
   }
-
-  commitCurrent();
 
   if (users.length === 0) {
     throw new Error("No valid users found in YAML input.");
-  }
-
-  const resolvedCycles = globalCycles ?? defaultCycles;
-  if (resolvedCycles === undefined || !Number.isInteger(resolvedCycles) || resolvedCycles < 1) {
-    throw new Error(
-      "Missing valid cycles. Set top-level 'cycles' in YAML (positive integer), or pass --cycles.",
-    );
   }
 
   return { cycles: resolvedCycles, users };
