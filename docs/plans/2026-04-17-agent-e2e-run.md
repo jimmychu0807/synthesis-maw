@@ -20,29 +20,36 @@ Plan for a script that starts `@maw/agent` as an HTTP child process, reads users
 The script should accept a YAML file path (for example via `--input <path>`), with this shape:
 
 ```yml
-- privateKey: "0x..."
-  intents:
-    - "60/40 ETH/USDC, $5/day, 7 days"
-    - "50/50 WBTC/ETH, $10/day, 3 days"
-- privateKey: "0x..."
-  intents:
-    - "70/30 ETH/USDC, $8/day, 14 days"
+cycles: 2
+users:
+  - privateKey: "0x..."
+    intents:
+      - "60/40 ETH/USDC, $5/day, 7 days"
+      - "50/50 WBTC/ETH, $10/day, 3 days"
+  - privateKey: "0x..."
+    intents:
+      - "70/30 ETH/USDC, $8/day, 14 days"
 ```
 
 Type shape (for implementation reference):
 
 ```ts
-type YamlInput = Array<{
-  privateKey: `0x${string}`;
-  intents: string[];
-}>;
+type YamlInput = {
+  cycles: number; // global positive integer for all users/intents
+  users: Array<{
+    privateKey: `0x${string}`;
+    intents: string[];
+  }>;
+};
 ```
 
 Validation rules:
 
 - `privateKey` is required and must be a valid `0x` hex private key.
+- top-level `cycles` is required and must be a positive integer.
 - `intents` is required and must be a non-empty string array.
 - Skip invalid entries with clear logs, or fail fast in strict mode.
+- Optional: CLI `--cycles` can be used as a fallback only when YAML omits top-level `cycles`.
 
 Execution rule:
 
