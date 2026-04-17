@@ -383,13 +383,14 @@ async function encryptForTee(
   const sharedX = sharedPoint.slice(1, 33); // x-coordinate only
 
   // HKDF to derive AES key
-  const aesKeyBytes = hkdf(
+  const aesKeyBytesRaw = hkdf(
     sha256,
     sharedX,
     undefined,
     new TextEncoder().encode("ecdsa_encryption"),
     32,
   );
+  const aesKeyBytes = new Uint8Array(aesKeyBytesRaw);
 
   // AES-256-GCM encrypt
   const iv = randomBytes(12);
@@ -432,13 +433,14 @@ async function decryptFromTee(
   const sharedPoint = secp.getSharedSecret(privKey, serverEphPub);
   const sharedX = sharedPoint.slice(1, 33);
 
-  const aesKeyBytes = hkdf(
+  const aesKeyBytesRaw = hkdf(
     sha256,
     sharedX,
     undefined,
     new TextEncoder().encode("ecdsa_encryption"),
     32,
   );
+  const aesKeyBytes = new Uint8Array(aesKeyBytesRaw);
 
   const cryptoKey = await globalThis.crypto.subtle.importKey(
     "raw",
