@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "agent-e2e-run": "tsx ./agent-e2e-run.ts --input ./simple-intents.yml - cycles 5"
+    "agent-e2e-run": "tsx ./agent-e2e-run.ts"
   },
   "devDependencies": {
     "@noble/hashes": "^2.0.1",

@@ -73,7 +73,7 @@ function printUsage(): void {
   console.log(
     [
       "Usage:",
-      "  pnpm exec tsx scripts/agent-e2e-run.ts --input ./inputs/users.yml --cycles 3",
+      "  pnpm exec tsx scripts/agent-e2e-run.ts --input ./scripts/sample-intents/single-intent.yml --cycles 3",
       "",
       "Options:",
       "  --input <path>        Required. YAML input file path.",

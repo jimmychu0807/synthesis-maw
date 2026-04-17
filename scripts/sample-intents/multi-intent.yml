@@ -3,9 +3,9 @@ users:
   - privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     # well-known test wallet: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
     intents:
-      - "60/40 ETH/USDC, $5/day, 7 days"
-      - "50/50 WBTC/ETH, $10/day, 3 days"
+      - "60/40 ETH/USDC, $5/day, 7 days, max 3 trades per day"
+      - "50/50 WBTC/ETH, $10/day, 3 days, max 2 trades per day"
   - privateKey: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
     # well-known test wallet: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
     intents:
-      - "70/30 ETH/USDC, $8/day, 14 days"
+      - "70/30 ETH/USDC, $8/day, 14 days, max 4 trades per day"

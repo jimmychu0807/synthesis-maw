@@ -1,0 +1,6 @@
+cycles: 5
+users:
+  - privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+    # well-known test wallet: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+    intents:
+      - "60/40 ETH/USDC, $5/day, 7 days, max 3 trades per day"
