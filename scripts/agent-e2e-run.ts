@@ -29,6 +29,7 @@ interface ScriptConfig {
   defaultCycles?: number;
   port: number;
   strict: boolean;
+  keepDB: boolean;
   pollMs: number;
   startupTimeoutMs: number;
   permissions: string;
@@ -56,8 +57,8 @@ interface CreateIntentResponse {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const repoRoot = resolve(__dirname, "..");
-const serverEntry = resolve(repoRoot, "packages/agent/src/server.ts");
+const cwd = resolve(__dirname);
+const serverEntry = resolve(cwd, "../packages/agent/src/server.ts");
 const DEFAULT_AGENT_PORT = 3147;
 
 const DEFAULT_PERMISSIONS = JSON.stringify([
@@ -77,6 +78,7 @@ function printUsage(): void {
       "  --cycles <number>     Optional fallback when YAML omits top-level cycles.",
       `  --port <number>       Optional. Agent port (default: ${DEFAULT_AGENT_PORT}).`,
       "  --strict              Optional. Fail on first invalid YAML entry.",
+      "  --keepDB              Optional. Keep temp SQLite DB on disk for debugging; logs path at startup.",
       "  --poll-ms <number>    Optional. Poll interval for cycle checks (default: 5000).",
       "  --startup-timeout-ms  Optional. Server startup timeout (default: 30000).",
       "",
@@ -106,6 +108,7 @@ function parseArgs(argv: string[]): ScriptConfig {
   const pollMsRaw = getArg("--poll-ms");
   const startupTimeoutRaw = getArg("--startup-timeout-ms");
   const strict = argv.includes("--strict");
+  const keepDB = argv.includes("--keepDB");
 
   if (!inputPath) {
     throw new Error("Missing required argument --input <path>.");
@@ -139,6 +142,7 @@ function parseArgs(argv: string[]): ScriptConfig {
     defaultCycles,
     port,
     strict,
+    keepDB,
     pollMs,
     startupTimeoutMs,
     permissions: process.env.AGENT_E2E_PERMISSIONS ?? DEFAULT_PERMISSIONS,
@@ -374,6 +378,9 @@ async function main(): Promise<void> {
 
   const tmpDir = mkdtempSync(join(tmpdir(), "maw-agent-e2e-"));
   const dbPath = join(tmpDir, "agent-e2e.db");
+  if (config.keepDB) {
+    console.log(`[info] keepDB: temp database ${dbPath}`);
+  }
 
   let server: ChildProcess | null = null;
   let serverStderr = "";
@@ -382,7 +389,9 @@ async function main(): Promise<void> {
       server.kill("SIGTERM");
       server = null;
     }
-    rmSync(tmpDir, { recursive: true, force: true });
+    if (!config.keepDB) {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
   };
 
   process.on("SIGINT", () => {
@@ -396,8 +405,8 @@ async function main(): Promise<void> {
 
   try {
     console.log(`[info] starting server on ${base}`);
-    server = spawn("npx", ["tsx", serverEntry], {
-      cwd: repoRoot,
+    server = spawn("pnpm", ["exec", "tsx", serverEntry], {
+      cwd,
       env: { ...process.env, PORT: String(config.port), DB_PATH: dbPath },
       stdio: "pipe",
     });
