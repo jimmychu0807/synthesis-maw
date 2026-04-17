@@ -115,6 +115,17 @@ describe("logAction", () => {
     expect(parsed.action).toBe("file_write_test");
     expect(parsed.sequence).toBe(entry.sequence);
   });
+
+  it("uses MAW_AGENT_LOG_JSONL when set", () => {
+    vi.stubEnv("MAW_AGENT_LOG_JSONL", "/tmp/maw-override-agent-log.jsonl");
+    try {
+      logAction("override_path_test");
+      const [filePath] = (appendFileSync as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      expect(filePath).toBe("/tmp/maw-override-agent-log.jsonl");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe("resetLogSequence", () => {

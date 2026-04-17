@@ -6,15 +6,22 @@
  */
 import type { AgentLogEntry } from "@maw/common";
 export type { AgentLogEntry } from "@maw/common";
-import { appendFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { appendFileSync } from "fs";
+import { join, resolve } from "path";
 
 // ---------------------------------------------------------------------------
 // JSONL writer
 // ---------------------------------------------------------------------------
 
 let sequence = 0;
-const LOG_PATH = join(process.cwd(), "agent_log.jsonl");
+
+function getAgentLogJsonlPath(): string {
+  const fromEnv = process.env.MAW_AGENT_LOG_JSONL?.trim();
+  if (fromEnv && fromEnv.length > 0) {
+    return resolve(fromEnv);
+  }
+  return join(process.cwd(), "agent_log.jsonl");
+}
 
 export function resetLogSequence(): void {
   sequence = 0;
@@ -39,7 +46,7 @@ export function logAction(
   };
 
   const line = JSON.stringify(entry) + "\n";
-  appendFileSync(LOG_PATH, line, "utf-8");
+  appendFileSync(getAgentLogJsonlPath(), line, "utf-8");
 
   return entry;
 }

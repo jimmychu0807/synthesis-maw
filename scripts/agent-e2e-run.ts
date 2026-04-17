@@ -57,8 +57,10 @@ interface CreateIntentResponse {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const cwd = resolve(__dirname);
-const serverEntry = resolve(cwd, "../packages/agent/src/server.ts");
+/** Monorepo root — server cwd so packages/agent config loads root `.env`. */
+const repoRoot = resolve(__dirname, "..");
+const serverEntry = resolve(repoRoot, "packages/agent/src/server.ts");
+const e2eAgentLogJsonl = join(__dirname, "agent_log.jsonl");
 const DEFAULT_AGENT_PORT = 3147;
 
 const DEFAULT_PERMISSIONS = JSON.stringify([
@@ -406,8 +408,13 @@ async function main(): Promise<void> {
   try {
     console.log(`[info] starting server on ${base}`);
     server = spawn("pnpm", ["exec", "tsx", serverEntry], {
-      cwd,
-      env: { ...process.env, PORT: String(config.port), DB_PATH: dbPath },
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        PORT: String(config.port),
+        DB_PATH: dbPath,
+        MAW_AGENT_LOG_JSONL: e2eAgentLogJsonl,
+      },
       stdio: "pipe",
     });
 
